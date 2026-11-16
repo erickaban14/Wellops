@@ -1,0 +1,27 @@
+# Render Blueprint: New > Blueprint in the Render dashboard, pick this repository.
+services:
+  - type: web
+    name: wellops-erp
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/public
+    numInstances: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SEED_PASSWORD
+        generateValue: true
+      # Role-picker login without a password. Fine for a demo with sample data; set to "false" for real data.
+      - key: DEMO_LOGIN
+        value: "true"
+      # Optional: leave blank to run on the built-in demo data (reset on every restart/redeploy).
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ONPREM_PG_URL
+        sync: false

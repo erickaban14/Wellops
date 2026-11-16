@@ -1,0 +1,19 @@
+{
+  "name": "wellops-erp",
+  "version": "1.0.0",
+  "description": "ERP for wells, rigs and pumps operations (oil contractors) - Node.js + Supabase",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "schema": "node server/scripts/gen-schema.js",
+    "sync": "node server/scripts/sync-cli.js"
+  },
+  "engines": { "node": ">=20.12" },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "express": "^5.1.0",
+    "pg": "^8.13.0"
+  }
+}
