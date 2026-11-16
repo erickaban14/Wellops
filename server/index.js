@@ -21,11 +21,16 @@ app.use(express.json({ limit: '25mb' }));
 app.use(express.static(path.resolve('public'), { setHeaders: (res, p) => { if (/sw\.js$|\.html$/.test(p)) res.setHeader('Cache-Control', 'no-cache'); } }));
 const api = express.Router();
 app.use('/api', api);
+const boot = { ready: false, error: '' };
+api.use((req, res, next) => {
+  if (boot.ready || req.path === '/public') return next();
+  res.status(503).json({ error: boot.error || 'The database is being prepared (first start). Try again in a minute.' });
+});
 const h = fn => (req, res, next) => Promise.resolve(fn(req, res)).then(out => { if (out !== undefined && !res.headersSent) res.json(out); }).catch(next);
 
 // ---------- Auth ----------
 const meta = { models, roles: Object.fromEntries(Object.entries(ROLES).map(([k, r]) => [k, { label: r.label, group: r.group }])) };
-api.get('/public', h(async () => ({ demo_login: DEMO_LOGIN, mode: db.mode, roles: DEMO_LOGIN ? meta.roles : {} })));
+api.get('/public', h(async () => ({ demo_login: DEMO_LOGIN, mode: db.mode, ready: boot.ready, error: boot.error, roles: DEMO_LOGIN ? meta.roles : {} })));
 api.post('/login', h(async (req, res) => {
   const user = (await db.list('users')).find(u => u.email?.toLowerCase() === String(req.body.email || '').toLowerCase());
   if (!user || user.active === false || !checkPassword(req.body.password, user.password_hash)) fail(401, 'Wrong email or password');
@@ -226,7 +231,21 @@ app.use((err, req, res, next) => {
 });
 app.get(/^\/(?!api\/).*/, (req, res) => res.sendFile(path.resolve('public/index.html')));
 
-await seedIfEmpty();
-startSyncTimer();
+// Listen first so the host sees the service as up, then prepare the database.
 const port = Number(process.env.PORT) || 3000;
 app.listen(port, () => console.log(`WellOps ERP running on http://localhost:${port}  [database: ${db.mode}${syncConfigured() ? ', on-prem sync enabled' : ''}] ${now()}`));
+async function prepareDb() {
+  try {
+    await seedIfEmpty();
+    boot.ready = true; boot.error = '';
+    startSyncTimer();
+    console.log('[startup] Database ready.');
+  } catch (e) {
+    boot.error = db.mode === 'supabase' && /does not exist|schema cache|relation|Could not find the table/i.test(e.message)
+      ? 'Supabase is connected but the tables are missing. Run supabase/schema.sql in the Supabase SQL editor; the server retries automatically.'
+      : `Database start-up failed: ${e.message}`;
+    console.error('[startup]', boot.error);
+    setTimeout(prepareDb, 30000);       // retry, e.g. after the schema has been applied
+  }
+}
+prepareDb();

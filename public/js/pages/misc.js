@@ -49,6 +49,7 @@ export async function loginPage(root, boot) {
   let pub = { roles: {}, demo_login: false };
   try { pub = await api('/public'); } catch (e) { if (e.offline) return root.replaceChildren(h('div.login', h('div.card', h('h1', 'WellOps ERP'), h('p.muted', 'No connection, and nobody has signed in on this device yet. Connect once to sign in; after that, Daily Work Tickets work offline.'),
     h('button.btn.primary', { onclick: () => location.reload() }, 'Try again')))); }
+  if (pub.ready === false) { setTimeout(() => loginPage(root, boot), 8000); return root.replaceChildren(h('div.login', h('div.card', h('h1', 'WellOps ERP'), h('div.banner', { class: pub.error ? 'bad' : '', style: { marginTop: '14px' }, role: 'status' }, pub.error || 'Preparing the database for first use. This page refreshes by itself.')))); }
   const email = h('input', { type: 'email', autocomplete: 'username', required: true, placeholder: 'name@company.com' }), pw = h('input', { type: 'password', autocomplete: 'current-password', required: true });
   const err = h('div.banner.bad', { hidden: true });
   const attempt = async fn => { err.hidden = true; try { const r = await fn(); await boot(); return r; } catch (e) { err.textContent = e.message; err.hidden = false; } };
