@@ -846,7 +846,8 @@ create table if not exists public."work_limit_alerts" (
   "limit_days" numeric,
   "status" text,
   "decided_by" text,
-  "decided_at" timestamptz
+  "decided_at" timestamptz,
+  "decision_note" text
 );
 alter table public."work_limit_alerts" add column if not exists "employee_id" text;
 alter table public."work_limit_alerts" add column if not exists "project_id" text;
@@ -856,6 +857,7 @@ alter table public."work_limit_alerts" add column if not exists "limit_days" num
 alter table public."work_limit_alerts" add column if not exists "status" text;
 alter table public."work_limit_alerts" add column if not exists "decided_by" text;
 alter table public."work_limit_alerts" add column if not exists "decided_at" timestamptz;
+alter table public."work_limit_alerts" add column if not exists "decision_note" text;
 create index if not exists "work_limit_alerts_updated_at_idx" on public."work_limit_alerts" (updated_at);
 alter table public."work_limit_alerts" enable row level security;
 

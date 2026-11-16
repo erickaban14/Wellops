@@ -1,7 +1,7 @@
 import './env.js';
 import express from 'express';
 import path from 'node:path';
-import { can, checkPassword, endSession, matchFace, need, publicUser, requireAuth, startSession } from './auth.js';
+import { can, checkPassword, endSession, hashPassword, matchFace, need, publicUser, requireAuth, startSession } from './auth.js';
 import { models } from './models.js';
 import { ROLES } from './roles.js';
 import { seedIfEmpty } from './seed.js';
@@ -48,13 +48,29 @@ api.post('/logout', (req, res) => { endSession(res); res.json({ ok: true }); });
 
 api.use(requireAuth);
 api.get('/me', h(async req => ({ user: publicUser(req.user), meta, mode: db.mode, sync_configured: syncConfigured(),
-  company: (await db.list('settings', { key: 'company_name' }))[0]?.value || 'WellOps ERP' })));
+  company: (await db.list('settings', { key: 'company_name' }))[0]?.value || 'WellOps ERP', currency: (await db.list('settings', { key: 'currency' }))[0]?.value || 'USD' })));
 api.post('/face/enroll', h(async req => {
   if (!Array.isArray(req.body.descriptor) || req.body.descriptor.length !== 128) fail(400, 'Invalid face descriptor');
   await db.update('users', req.user.id, { face_descriptor: req.body.descriptor });
   return { ok: true };
 }));
 api.get('/dashboard', h(req => dashboard(req.user)));
+
+// ---------- Password & notifications ----------
+const strong = pw => (String(pw || '').length >= 8 ? pw : fail(400, 'Password must be at least 8 characters'));
+api.post('/password', h(async req => {
+  if (!checkPassword(req.body.current, req.user.password_hash)) fail(400, 'Current password is wrong');
+  await db.update('users', req.user.id, { password_hash: hashPassword(strong(req.body.next)) });
+  return { ok: true };
+}));
+api.post('/users/:id/reset-password', h(async req => {       // administrator sets a temporary password
+  if (req.user.role !== 'admin') fail(403, 'Only an administrator can reset passwords');
+  await db.update('users', req.params.id, { password_hash: hashPassword(strong(req.body.next)) });
+  return { ok: true };
+}));
+const myNotes = async user => (await db.list('notifications')).filter(n => n.role === user.role || n.user_id === user.id).reverse();
+api.get('/notifications', h(async req => { const all = await myNotes(req.user); return { unread: all.filter(n => !n.read).length, items: all.slice(0, 30) }; }));
+api.post('/notifications/read', h(async req => { for (const n of (await myNotes(req.user)).filter(n => !n.read)) await db.update('notifications', n.id, { read: true }); return { ok: true }; }));
 
 // ---------- Live updates (server-sent events) ----------
 const streams = new Set();
@@ -108,7 +124,7 @@ api.post('/data/:table', h(async req => {
   if (!canWrite(req, m)) fail(403, `Your role cannot create ${m.label}`);
   if (m.name === 'leaves' && !can(req, 'hr')) Object.assign(req.body, { employee_id: req.user.employee_id, status: 'requested' });
   const body = await prepare(m, req.body);
-  if (m.name === 'users') body.password_hash = (await import('./auth.js')).hashPassword(req.body.password || process.env.SEED_PASSWORD || 'ChangeMe-2026');
+  if (m.name === 'users') body.password_hash = hashPassword(req.body.password || process.env.SEED_PASSWORD || 'ChangeMe-2026');
   return strip(m, await db.insert(m.name, body));
 }));
 api.put('/data/:table/:id', h(async req => {
@@ -146,7 +162,7 @@ api.post('/operations/tickets/sync', need('operations'), h(async req => {
 }));
 api.post('/operations/tickets/:id/approve', need('operations'), h(req => ops.approveTicket(req.params.id, req.user)));
 api.get('/operations/projects/:id/overview', h(req => ops.overview(req.params.id)));
-api.post('/operations/alerts/:id/decide', h(req => ops.decideAlert(req.params.id, !!req.body.approve, req.user)));
+api.post('/operations/alerts/:id/decide', h(req => ops.decideAlert(req.params.id, !!req.body.approve, req.user, req.body.note)));
 
 // ---------- HR ----------
 api.get('/hr/training/compliance', h(() => hr.compliance()));

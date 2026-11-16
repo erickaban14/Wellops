@@ -24,6 +24,7 @@ export async function seedIfEmpty() {
     ['auto_consolidate_online', 'true', 'Consolidate timesheets in real time for tickets entered online'],
     ['vpn_connect_url', process.env.VPN_CONNECT_URL || '', 'URL / deep link opened on the device after face login to bring up the VPN client'],
     ['company_name', 'WellOps Energy Services', 'Shown in the header'],
+    ['currency', 'USD', 'Currency code shown next to amounts'],
   ].map(([key, value, description]) => ({ key, value, description })));
 
   await ins('accounts', [['1000', 'Cash & Bank', 'asset'], ['1200', 'Accounts Receivable', 'asset'], ['1300', 'Inventory', 'asset'], ['1500', 'Machinery & Equipment', 'asset'],

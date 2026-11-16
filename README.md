@@ -79,6 +79,17 @@ run and removes rows deleted upstream. Every run is logged in Sync history.
   `vpn_connect_url` (Settings › Parameters or `VPN_CONNECT_URL`), which should be your VPN client's connect link
   or a local agent endpoint on the device.
 
+## Interface notes
+
+- **Phones**: primary actions sit in a bar fixed to the bottom of the screen; lists collapse to compact cards; controls are at least 44 px on touch devices.
+- **Work tickets** keep every change on the device as you type, so an interrupted entry can be continued later.
+- **Theme**: Auto / Light / Dark in the user menu (top right).
+- **Lists**: click a column header to sort, filter by status chips, page through 50 at a time, Export downloads the filtered rows as CSV.
+- **Forms** warn before discarding unsaved changes and show validation messages next to the field.
+- **Approvals and postings** ask for confirmation; rejections require a reason, which is stored.
+- **Passwords**: users change their own under My Space › Profile; an administrator resets forgotten ones under Settings › Users (there is no e-mail reset).
+- **Currency and time**: amounts show the `currency` parameter (default USD); date-times are shown in site time as stored (UTC wall-clock).
+
 ## Project layout
 
 ```

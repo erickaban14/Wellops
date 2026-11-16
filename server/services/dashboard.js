@@ -6,12 +6,14 @@ import { setting } from './common.js';
 import { overview } from './operations.js';
 import { timeSummary } from './hr.js';
 
-const money = v => num(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
+let CUR = 'USD';
+const money = v => `${CUR} ${num(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 const kpi = (title, value, link, tone = '', sub = '') => ({ type: 'kpi', title, value, link, tone, sub });
 const list = (title, columns, rows, link, wide) => ({ type: 'list', title, columns, rows: rows.slice(0, 8), link, wide });
 const live = s => !['completed', 'done', 'cancelled'].includes(s);
 
 export async function dashboard(user) {
+  CUR = await setting('currency', 'USD');
   const cache = {};
   const t = name => (cache[name] ||= db.list(name));
   const names = async (table, key = 'name') => { const m = byId(await t(table)); return id => m[id]?.[key] || ''; };
@@ -68,7 +70,7 @@ export async function dashboard(user) {
 
     // ---- Lists ----
     l_projects: async () => ({ type: 'projects', title: 'Project progress: planned vs actual', wide: true, rows: (await overviews()).map(o => ({ id: o.project.id, code: o.project.code, name: o.project.name, status: o.project.status,
-      planned: o.planned_pct, actual: o.actual_pct, deviation: o.deviation, cost: o.cost, budget: o.budget, exceptions: o.exceptions.filter(e => e.level !== 'low').length })) }),
+      planned: o.planned_pct, actual: o.actual_pct, deviation: o.deviation, cost: o.cost, budget: o.budget, trend: o.trend.map(t => [t.planned, t.actual]), exceptions: o.exceptions.filter(e => e.level !== 'low').length })) }),
     l_exceptions: async () => ({ type: 'exceptions', title: 'Exceptions & deviations to date', rows: (await overviews()).flatMap(o => o.exceptions.map(e => ({ ...e, project: o.project.code, id: o.project.id })))
       .sort((a, b) => 'hml'.indexOf(a.level[0]) - 'hml'.indexOf(b.level[0])).slice(0, 10) }),
     l_costs_by_project: async () => { const P = await names('projects', 'code'); const g = groupBy(await t('project_costs'), 'project_id'); const B = byId(await t('projects'));

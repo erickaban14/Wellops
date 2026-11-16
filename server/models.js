@@ -112,7 +112,7 @@ export const models = {
     ['entry_mode', 'select', sel('online', 'offline')], ['incidents', 'number'], ['remarks', 'longtext'], ['synced_at', 'datetime', { ro: 1 }],
     ['lines', 'json'], ['crew', 'json'], ['materials', 'json']], { display: 'ticket_no' }),
   work_limit_alerts: M('Work Limit Alerts', 'operations', [['employee_id', 'ref', ref('employees')], ['project_id', 'ref', ref('projects')], ['as_of', 'date'], ['consecutive_days', 'number'],
-    ['limit_days', 'number'], ['status', 'select', sel('pending', 'approved', 'rejected')], ['decided_by'], ['decided_at', 'datetime']], { display: 'as_of' }),
+    ['limit_days', 'number'], ['status', 'select', sel('pending', 'approved', 'rejected')], ['decided_by'], ['decided_at', 'datetime'], ['decision_note']], { display: 'as_of' }),
 
   // ---------- Procurement ----------
   suppliers: M('Suppliers', 'procurement', [['name', 'text', { req: 1 }], ['contact_person'], ['email'], ['phone'], ['payment_terms']]),
@@ -140,4 +140,16 @@ export const models = {
   stock_counts: M('Physical Inventory', 'inventory', [['count_no'], ['count_date', 'date'], ['status', 'select', sel('draft', 'posted')], ['remarks'], ['lines', 'json']], { display: 'count_no' }),
 };
 
-for (const [name, m] of Object.entries(models)) { m.name = name; m.modules ||= [m.module]; }
+// Form sections for the longer records (fields not listed fall under "General").
+const SECTIONS = {
+  machines: { Ratings: ['api_code', 'max_depth_ft', 'max_flow_gpm', 'max_pressure_psi', 'horsepower', 'accessories'], 'Commercial & asset': ['day_rate', 'purchase_date', 'purchase_cost'] },
+  items: { Stock: ['on_hand', 'location', 'qa_required'], 'Planning (MRP)': ['lead_time_days', 'reorder_level', 'reorder_qty', 'safety_stock', 'min_order_qty', 'preferred_supplier_id'] },
+  employees: { 'Pay & time': ['hourly_rate', 'daily_allowance', 'accumulated_hours', 'accumulated_days'], Contact: ['email', 'phone'] },
+  sales_orders: { 'Job parameters': ['operation', 'api_code', 'target_depth_ft', 'target_flow_gpm', 'requested_start'] },
+};
+const MONEY = /^(amount|total|budget|debit|credit|price|unit_cost|day_rate|hourly_rate|daily_allowance|purchase_cost|total_gross|total_net|min_amount)$|_pay$|^deductions$|^allowances$/;
+for (const [name, m] of Object.entries(models)) {
+  m.name = name; m.modules ||= [m.module];
+  if (SECTIONS[name]) m.sections = SECTIONS[name];
+  for (const [k, f] of Object.entries(m.fields)) if (f.type === 'number' && MONEY.test(k)) f.money = true;
+}

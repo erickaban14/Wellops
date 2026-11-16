@@ -50,6 +50,7 @@ export async function decidePo(id, approve, note, user) {
   const po = await db.get('purchase_orders', id) || fail(404, 'PO not found');
   if (po.status !== 'pending approval') fail(400, 'PO is not awaiting approval');
   if (user.role !== po.current_approver && user.role !== 'admin') fail(403, `This PO is waiting for: ${po.current_approver}`);
+  if (!approve && !String(note || '').trim()) fail(400, 'A reason is required when rejecting');
   const approvals = po.approvals || [];
   const step = approvals.find(a => a.status === 'pending');
   Object.assign(step, { status: approve ? 'approved' : 'rejected', by: user.name, at: new Date().toISOString(), note: note || '' });

@@ -1,5 +1,5 @@
 // Planning: machine selection by API/depth/flow/operation, MRP runs, availability board.
-import { actionBtn, addDays, api, badge, can, card, confirmBox, field, fmtDT, fmtNum, h, invalidate, names, page, rows, select, simpleTable, toast, today } from '../core.js';
+import { actionBtn, addDays, api, badge, can, card, confirmBox, field, fmtDate, fmtDT, fmtMoney, fmtNum, h, invalidate, names, page, rows, select, simpleTable, toast, today } from '../core.js';
 
 const OPS = ['drilling', 'workover', 'surface pumping'];
 
@@ -20,8 +20,8 @@ export async function machineSelection(root) {
         h('div', h('div.score', c.eligible ? c.score : '–'), h('div.muted.right', c.eligible ? 'fit score' : ''))))),
       r.standards.length ? card('Applicable API standards', null, simpleTable([{ label: 'Code', key: 'code' }, { label: 'Title', key: 'title' }, { label: 'Scope', key: 'scope' }], r.standards)) : null);
   };
-  root.replaceChildren(...page('Machine Selection', null,
-    card('Selection criteria', actionBtn('Find best machine', run, 'primary'), h('div.body', h('div.fields', field('API code(s)', f.api_code), field('Well depth (ft)', f.depth_ft), field('Target flow rate (gpm)', f.flow_gpm),
+  root.replaceChildren(...page('Machine Selection', actionBtn('Find best machine', run, 'primary'),
+    card('Selection criteria', null, h('div.body', h('div.fields', field('API code(s)', f.api_code), field('Well depth (ft)', f.depth_ft), field('Target flow rate (gpm)', f.flow_gpm),
       field('Target operation', f.operation), field('Needed from', f.start), field('Needed to', f.end)))), h('div', { style: { height: '14px' } }), out));
   await run();
 }
@@ -39,7 +39,7 @@ function planCard(p) {
     Activities: () => h('div.body', h('div.muted', { style: { marginBottom: '8px' } }, `${fmtDT(p.activities[0]?.planned_start)} → ${fmtDT(p.activities.at(-1)?.planned_end)} · total ${p.duration} (${p.total_hours} h)`),
       gantt(p.activities, p.activities[0]?.planned_start, p.activities.at(-1)?.planned_end)),
     Materials: () => simpleTable([{ label: 'Item', get: m => `${m.code} · ${m.name}` }, { label: 'Type', key: 'category' }, { label: 'Required', get: m => `${fmtNum(m.required)} ${m.uom || ''}`, num: 1 }, { label: 'From stock', get: m => fmtNum(m.from_stock), num: 1 },
-      { label: 'Shortage', get: m => (m.short ? badge(fmtNum(m.short), 'bad') : badge('covered', 'good')) }, { label: 'To order', get: m => (m.order_qty ? fmtNum(m.order_qty) : ''), num: 1 }, { label: 'Order by', get: m => m.order_by || '' }], p.materials),
+      { label: 'Shortage', get: m => (m.short ? badge(fmtNum(m.short), 'bad') : badge('covered', 'good')) }, { label: 'To order', get: m => (m.order_qty ? fmtNum(m.order_qty) : ''), num: 1 }, { label: 'Order by', get: m => fmtDate(m.order_by) }], p.materials),
     Manning: () => simpleTable([{ label: 'Position', key: 'position' }, { label: 'Assigned', get: c => c.name || badge('shortage', 'bad') },
       { label: 'Availability check', get: c => (c.blocked.length ? h('span.muted', `Skipped: ${c.blocked.join('; ')}`) : c.name ? 'Free of leave, training and other projects' : 'No employee with this position') }], p.crew),
     Machine: () => h('div.body', p.machine ? [h('strong', `${p.machine.code} · ${p.machine.name}`), ' ', badge(`fit ${p.machine.score}`, 'good'), h('div.muted', { style: { margin: '6px 0 10px' } }, `Accessory tools: ${p.machine.accessories || 'none listed'}`)] : h('div.banner.bad', 'No machine available'),
@@ -48,10 +48,11 @@ function planCard(p) {
     KPIs: () => simpleTable([{ label: 'KPI', key: 'name' }, { label: 'Target', get: k => `${k.direction} ${k.target} ${k.unit || ''}` }, { label: 'Measured', get: k => (k.auto_key ? 'Automatically from work tickets' : 'Manual entry') }], p.kpis),
   };
   const body = h('div'), bar = h('div.tabs', { style: { margin: 0, padding: '0 8px' } });
-  const show = name => { body.replaceChildren(tabs[name]()); bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.textContent.startsWith(name))); };
+  const show = name => { body.replaceChildren(tabs[name]()); bar.querySelectorAll('button').forEach(b => { const on = b.textContent.startsWith(name); b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); }); };
   const counts = { Materials: p.materials.filter(m => m.short).length, Manning: p.crew.filter(c => !c.employee_id).length, Training: p.training.length };
-  bar.append(...Object.keys(tabs).map(n => h('button', { onclick: () => show(n) }, n, counts[n] ? ` (${counts[n]})` : '')));
-  const el = card(`${p.project_code ? `${p.project_code} · ` : ''}${p.name}`, [badge(`${p.start_date} → ${p.end_date}`, 'info'), badge(p.duration), badge(`Budget ${fmtNum(p.budget, 0)}`)],
+  bar.setAttribute('role', 'tablist');
+  bar.append(...Object.keys(tabs).map(n => h('button', { type: 'button', role: 'tab', onclick: () => show(n) }, n, counts[n] ? ` (${counts[n]})` : '')));
+  const el = card(`${p.project_code ? `${p.project_code} · ` : ''}${p.name}`, [badge(`${fmtDate(p.start_date)} → ${fmtDate(p.end_date)}`, 'info'), badge(p.duration), badge(`Budget ${fmtMoney(p.budget)}`)],
     p.exceptions.length ? h('div.body', { style: { paddingBottom: 0 } }, p.exceptions.map(e => h('div.banner.warn', { style: { marginBottom: '6px' } }, e))) : null, bar, body);
   show('Activities');
   return el;

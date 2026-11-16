@@ -1,5 +1,5 @@
 // Inventory transactions: receiving, QA, issue / return / adjustment, physical inventory.
-import { actionBtn, api, badge, can, card, confirmBox, field, fmtDT, fmtNum, h, invalidate, names, page, rows, select, simpleTable, toast } from '../core.js';
+import { actionBtn, api, badge, can, card, confirmBox, field, fmtDate, fmtDT, fmtNum, h, invalidate, names, page, rows, select, simpleTable, toast } from '../core.js';
 
 const qty = (v = '', attrs = {}) => h('input', { type: 'number', step: 'any', min: 0, value: v, style: { maxWidth: '120px' }, ...attrs });
 
@@ -7,7 +7,7 @@ export async function receivePage(root, id, base) {
   const [pos, sup, item, moves] = await Promise.all([rows('purchase_orders'), names('suppliers'), names('items'), rows('stock_moves')]);
   if (!id) {
     return root.replaceChildren(...page('Receive incoming materials', null, card('Approved purchase orders awaiting receipt', null, simpleTable(
-      [{ label: 'PO', key: 'po_no' }, { label: 'Supplier', get: p => sup[p.supplier_id] }, { label: 'Expected', key: 'expected_date' }, { label: 'Total', get: p => fmtNum(p.total), num: 1 }, { label: 'Status', get: p => badge(p.status) }],
+      [{ label: 'PO', key: 'po_no' }, { label: 'Supplier', get: p => sup[p.supplier_id] }, { label: 'Expected', get: p => fmtDate(p.expected_date) }, { label: 'Total', get: p => fmtNum(p.total), num: 1 }, { label: 'Status', get: p => badge(p.status) }],
       pos.filter(p => ['approved', 'partially received'].includes(p.status)), { onRow: p => { location.hash = `${base}/${p.id}`; }, empty: 'No approved purchase orders are waiting. POs appear here once fully approved.' }))));
   }
   const po = pos.find(p => p.id === id);
@@ -65,7 +65,7 @@ export async function countsPage(root, id, base) {
   if (!id) {
     const cat = select([['', 'All categories'], 'supply', 'material', 'tool', 'machine', 'spare part']);
     return root.replaceChildren(...page('Physical Inventory', can('inventory') ? [cat, actionBtn('Start count', async () => { const c = await api('/inventory/counts/start', { body: { category: cat.value } }); invalidate(); location.hash = `${base}/${c.id}`; }, 'primary')] : null,
-      card(null, null, simpleTable([{ label: 'Count', key: 'count_no' }, { label: 'Date', key: 'count_date' }, { label: 'Items', get: c => (c.lines || []).length, num: 1 },
+      card(null, null, simpleTable([{ label: 'Count', key: 'count_no' }, { label: 'Date', get: c => fmtDate(c.count_date) }, { label: 'Items', get: c => (c.lines || []).length, num: 1 },
         { label: 'Variances', get: c => (c.status === 'posted' ? (c.lines || []).filter(l => l.variance).length : ''), num: 1 }, { label: 'Status', get: c => badge(c.status) }],
       counts, { onRow: c => { location.hash = `${base}/${c.id}`; }, empty: 'No physical inventory counts yet' }))));
   }

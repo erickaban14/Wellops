@@ -1,5 +1,5 @@
 // Login (password / face / demo role), profile, finance reports, document files, on-prem sync.
-import { actionBtn, api, badge, can, card, field, fmtDT, fmtNum, h, invalidate, modal, names, oops, page, rows, select, simpleTable, state, toast } from '../core.js';
+import { actionBtn, api, badge, can, card, field, fieldError, fmtDT, fmtNum, h, invalidate, modal, names, oops, page, roleLabel, rows, select, simpleTable, state, toast } from '../core.js';
 
 // ---------- Face recognition (face-api.js, loaded on demand) ----------
 const FACE_LIB = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js';
@@ -57,19 +57,38 @@ export async function loginPage(root, boot) {
   const role = h('select', { 'aria-label': 'Demo role' }, Object.entries(groups).map(([g, list]) => h('optgroup', { label: g }, list.map(([k, l]) => h('option', { value: k, selected: k === 'rig_manager' }, l)))));
   root.replaceChildren(h('div.login', h('div.card',
     h('div.row', h('img', { src: '/icon.svg', width: 40, height: 40, alt: '' }), h('div', h('h1', 'WellOps ERP'), h('div.muted', 'Wells · Rigs · Pumps operations'))),
-    h('form', { onsubmit: e => { e.preventDefault(); attempt(() => api('/login', { body: { email: email.value, password: pw.value } })); } },
-      err, field('Email', email), field('Password', pw), h('button.btn.primary', { type: 'submit' }, 'Sign in')),
+    h('form', { noValidate: false, onsubmit: e => { e.preventDefault(); attempt(() => api('/login', { body: { email: email.value, password: pw.value } })); } },
+      err, field('Email', email), field('Password', pw), h('button.btn.primary', { type: 'submit' }, 'Sign in'), h('p.muted', { style: { margin: 0, fontSize: '12.5px', textAlign: 'center' } }, 'Forgot your password? Ask your system administrator to reset it.')),
     h('div.or', 'or'),
     h('button.btn', { onclick: () => attempt(async () => { const d = await captureFace('Face login'); const r = await api('/face/login', { body: { descriptor: d } }); startVpn(r.vpn_connect_url); }) }, 'Sign in with face recognition'),
     pub.demo_login ? [h('div.or', 'Demo: open the system as any role profile'), h('div.row', { style: { flexWrap: 'nowrap' } }, role, h('button.btn.primary', { style: { width: 'auto' }, onclick: () => attempt(() => api('/demo-login', { body: { role: role.value } })) }, 'Enter'))] : null)));
 }
 
+const pwField = (label, auto) => { const i = h('input', { type: 'password', autocomplete: auto, minLength: 8 }); return [i, field(label, i)]; };
+// Settings > Users: an administrator sets a temporary password (there is no e-mail service for self-service resets).
+export async function resetPassword(rec, reload) {
+  if (!rec.id || state.user.role !== 'admin') return null;
+  const [pw, el] = pwField('New temporary password (min. 8 characters)', 'new-password');
+  return h('div.lines', h('h3', 'Reset password'), h('p.muted', 'Use this when someone has forgotten their password. Give them the temporary password and ask them to change it under My Space › Profile.'),
+    h('div.row', { style: { alignItems: 'flex-end' } }, h('div', { style: { maxWidth: '320px', flex: 1 } }, el), actionBtn('Set password', async () => { await api(`/users/${rec.id}/reset-password`, { body: { next: pw.value } }); pw.value = ''; toast('Password reset', 'good'); })));
+}
+
 export async function profilePage(root) {
   const u = state.user;
+  const [cur, curEl] = pwField('Current password', 'current-password'), [next, nextEl] = pwField('New password (min. 8 characters)', 'new-password'), [again, againEl] = pwField('Repeat new password', 'new-password');
+  const changePw = async () => {
+    [cur, next, again].forEach(i => fieldError(i, ''));
+    if (!cur.value) { fieldError(cur, 'Enter your current password'); return cur.focus(); }
+    if (next.value.length < 8) { fieldError(next, 'Use at least 8 characters'); return next.focus(); }
+    if (next.value !== again.value) { fieldError(again, 'The two passwords do not match'); return again.focus(); }
+    try { await api('/password', { body: { current: cur.value, next: next.value } }); } catch (e) { fieldError(cur, e.message); return cur.focus(); }
+    [cur, next, again].forEach(i => { i.value = ''; }); toast('Password changed', 'good');
+  };
   root.replaceChildren(...page('My profile', null, card(u.name, badge(u.role_label, 'info'), h('div.body', h('div.fields', field('Email', h('input', { value: u.email, disabled: true })), field('Role', h('input', { value: u.role_label, disabled: true }))),
     h('h3', { style: { margin: '18px 0 6px' } }, 'Face recognition login'),
     h('p.muted', u.has_face ? 'Your face is enrolled. You can sign in with the camera; on field devices this also triggers the VPN client.' : 'Enrol your face to sign in with the camera. Only a numeric face signature is stored, never a photo.'),
-    actionBtn(u.has_face ? 'Re-enrol my face' : 'Enrol my face', async () => { const d = await captureFace('Enrol face'); await api('/face/enroll', { body: { descriptor: d } }); u.has_face = true; toast('Face enrolled', 'good'); profilePage(root); }, 'primary')))));
+    actionBtn(u.has_face ? 'Re-enrol my face' : 'Enrol my face', async () => { const d = await captureFace('Enrol face'); await api('/face/enroll', { body: { descriptor: d } }); u.has_face = true; toast('Face enrolled', 'good'); profilePage(root); }),
+    h('div.section-title', 'Change password'), h('div.fields', curEl, nextEl, againEl), h('div', { style: { marginTop: '12px' } }, actionBtn('Change password', changePw, 'primary'))))));
 }
 
 // ---------- Form extras ----------
@@ -90,8 +109,8 @@ export async function documentFile(rec, reload) {
 export async function poApprovals(rec) {
   if (!rec.approvals?.length) return null;
   const roles = state.meta.roles;
-  return h('div.lines', h('h3', 'Approval routing'), simpleTable([{ label: 'Step', get: a => rec.approvals.indexOf(a) + 1 }, { label: 'Approver', get: a => roles[a.role]?.label || a.role }, { label: 'Decision', get: a => badge(a.status) },
-    { label: 'By', get: a => a.by || '' }, { label: 'When', get: a => fmtDT(a.at) }], rec.approvals));
+  return h('div.lines', h('h3', 'Approval routing'), simpleTable([{ label: 'Step', get: a => rec.approvals.indexOf(a) + 1 }, { label: 'Approver', get: a => roleLabel(a.role) }, { label: 'Decision', get: a => badge(a.status) },
+    { label: 'By', get: a => a.by || '' }, { label: 'When', get: a => fmtDT(a.at) }, { label: 'Note', get: a => a.note || '' }], rec.approvals));
 }
 
 // ---------- Finance reports ----------

@@ -1,7 +1,7 @@
 // Project operations: Daily Work Tickets (online + offline sync), posting to timesheets/stock/costs,
 // work-day limit alerts, planned-vs-actual project overview.
 import { db } from '../store/index.js';
-import { byId, fail, groupBy, now, num, r2, sum, today } from '../util.js';
+import { addDays, byId, fail, groupBy, now, num, r2, sum, today } from '../util.js';
 import { journal, notify, setting } from './common.js';
 import { recalcAccumulated, streak } from './hr.js';
 
@@ -22,6 +22,7 @@ export async function saveTicket(body, user) {
 }
 
 export async function approveTicket(id, user) {
+  if (!['rig_supervisor', 'rig_manager', 'operations_head', 'admin'].includes(user.role)) fail(403, 'Only a supervisor or manager can approve work tickets');
   const t = await db.get('work_tickets', id) || fail(404, 'Ticket not found');
   if (t.status !== 'submitted') fail(400, 'Only submitted tickets can be approved');
   return db.update('work_tickets', id, { status: 'approved', remarks: [t.remarks, `Approved by ${user.name}`].filter(Boolean).join('\n') });
@@ -110,11 +111,12 @@ async function checkWorkLimit(t, empIds, E) {
     await notify('rig_manager', 'Work-day limit exceeded', `${E[id]?.name} has worked ${days} consecutive days (limit ${limit}). Approval required to continue.`, { kind: 'approval', ref_table: 'work_limit_alerts', ref_id: alert.id });
   }
 }
-export async function decideAlert(id, approve, user) {
+export async function decideAlert(id, approve, user, note) {
   const a = await db.get('work_limit_alerts', id) || fail(404, 'Alert not found');
   if (a.status !== 'pending') fail(400, 'Alert already decided');
   if (!['rig_manager', 'operations_head', 'admin'].includes(user.role)) fail(403, 'Only the Rig Manager can decide work-limit approvals');
-  return db.update('work_limit_alerts', id, { status: approve ? 'approved' : 'rejected', decided_by: user.name, decided_at: now() });
+  if (!approve && !String(note || '').trim()) fail(400, 'A reason is required when rejecting');
+  return db.update('work_limit_alerts', id, { status: approve ? 'approved' : 'rejected', decided_by: user.name, decided_at: now(), decision_note: note || '' });
 }
 
 // 4.4.3 / 4.4.5 Planned vs actual, exceptions, KPIs and accumulated cost for one project.
@@ -159,7 +161,24 @@ export async function overview(project_id, pre) {
     if (pend) ex.push({ level: 'high', type: 'Work limit', text: `${pend} work-day limit approval(s) pending` });
     if (project.status === 'planned' && project.start_date < today()) ex.push({ level: 'medium', type: 'Schedule', text: 'Planned start date has passed with no work ticket' });
   }
+  // Day-by-day trend: planned vs actual progress (%) and cumulative cost vs planned spend.
+  const trend = [];
+  if (activities.length) {
+    const last = [today(), project.end_date].sort()[0], sorted = [...posted].sort((a, b) => a.work_date.localeCompare(b.work_date));
+    for (let d = project.start_date; d <= last && trend.length < 120; d = addDays(d, 1)) {
+      const at = new Date(d + 'T23:59:59Z').getTime();
+      const fr = a => Math.max(0, Math.min(1, (at - new Date(a.planned_start)) / (new Date(a.planned_end) - new Date(a.planned_start) || 1)));
+      const plannedD = Math.round(sum(activities, a => num(a.planned_hours) * fr(a)) / totalH * 100);
+      const dayLines = sorted.filter(t => t.work_date <= d).flatMap(t => t.lines || []);
+      const actualD = Math.round(sum(activities, a => {
+        const mine = dayLines.filter(l => l.activity_id === a.id); if (!mine.length) return 0;
+        const pcts = mine.map(l => num(l.pct_complete)).filter(Boolean);
+        return num(a.planned_hours) * Math.min(100, pcts.length ? Math.max(...pcts) : Math.min(95, sum(mine, 'hours') / num(a.planned_hours) * 100)) / 100;
+      }) / totalH * 100);
+      trend.push({ date: d, planned: plannedD, actual: actualD, cost: r2(sum(costs.filter(c => c.cost_date <= d), 'amount')), planned_cost: Math.round(budget * plannedD / 100) });
+    }
+  }
   const byCat = groupBy(costs, 'category');
   return { project, activities, materials, manning, kpis: kpiRows, tickets: posted.length, planned_pct, actual_pct, deviation: actual_pct - planned_pct, cost, budget,
-    cost_by_category: Object.fromEntries(Object.entries(byCat).map(([k, v]) => [k, r2(sum(v, 'amount'))])), hours, npt, exceptions: ex };
+    cost_by_category: Object.fromEntries(Object.entries(byCat).map(([k, v]) => [k, r2(sum(v, 'amount'))])), hours, npt, exceptions: ex, trend };
 }
