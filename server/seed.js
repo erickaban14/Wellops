@@ -23,7 +23,7 @@ export async function seedIfEmpty() {
     ['payroll_contribution_pct', '4.5', 'Statutory contributions % of gross'],
     ['auto_consolidate_online', 'true', 'Consolidate timesheets in real time for tickets entered online'],
     ['vpn_connect_url', process.env.VPN_CONNECT_URL || '', 'URL / deep link opened on the device after face login to bring up the VPN client'],
-    ['company_name', 'WellOps Energy Services', 'Shown in the header'],
+    ['company_name', 'ProStars Energy Services', 'Shown in the header'],
     ['currency', 'USD', 'Currency code shown next to amounts'],
   ].map(([key, value, description]) => ({ key, value, description })));
 
