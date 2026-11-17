@@ -53,7 +53,7 @@ api.post('/logout', (req, res) => { endSession(res); res.json({ ok: true }); });
 
 api.use(requireAuth);
 api.get('/me', h(async req => ({ user: publicUser(req.user), meta, mode: db.mode, sync_configured: syncConfigured(),
-  company: (await db.list('settings', { key: 'company_name' }))[0]?.value || 'WellOps ERP', currency: (await db.list('settings', { key: 'currency' }))[0]?.value || 'USD' })));
+  company: (await db.list('settings', { key: 'company_name' }))[0]?.value || 'ProStars ERP', currency: (await db.list('settings', { key: 'currency' }))[0]?.value || 'USD' })));
 api.post('/face/enroll', h(async req => {
   if (!Array.isArray(req.body.descriptor) || req.body.descriptor.length !== 128) fail(400, 'Invalid face descriptor');
   await db.update('users', req.user.id, { face_descriptor: req.body.descriptor });
@@ -233,7 +233,7 @@ app.get(/^\/(?!api\/).*/, (req, res) => res.sendFile(path.resolve('public/index.
 
 // Listen first so the host sees the service as up, then prepare the database.
 const port = Number(process.env.PORT) || 3000;
-app.listen(port, () => console.log(`WellOps ERP running on http://localhost:${port}  [database: ${db.mode}${syncConfigured() ? ', on-prem sync enabled' : ''}] ${now()}`));
+app.listen(port, () => console.log(`ProStars ERP running on http://localhost:${port}  [database: ${db.mode}${syncConfigured() ? ', on-prem sync enabled' : ''}] ${now()}`));
 async function prepareDb() {
   try {
     await seedIfEmpty();
