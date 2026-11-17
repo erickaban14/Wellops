@@ -183,7 +183,7 @@ function shell(app, menuKey) {
   bellCount = h('span.pill.count', { hidden: true });
   content = h('main', { id: 'main', tabIndex: -1 });
   root.replaceChildren(
-    h('nav.nav', { 'aria-label': 'Main' }, h('a.brand', { href: '#/', title: 'All apps', 'aria-label': 'All apps' }, svg('<path d="M5 5h3v3H5zM10.5 5h3v3h-3zM16 5h3v3h-3zM5 10.5h3v3H5zM10.5 10.5h3v3h-3zM16 10.5h3v3h-3zM5 16h3v3H5zM10.5 16h3v3h-3zM16 16h3v3h-3z"/>'), h('span', app ? app.label : state.company)),
+    h('nav.nav', { 'aria-label': 'Main' }, h('a.brand', { href: '#/', title: 'Home - all apps', 'aria-label': 'Home - all apps' }, h('img.logo', { src: '/icon.svg', alt: '' }), h('span', app ? app.label : state.company)),
       app ? h('button.menu-toggle', { 'aria-label': 'Menu', 'aria-expanded': 'false', onclick: e => e.currentTarget.setAttribute('aria-expanded', String(menus.classList.toggle('open'))) }, svg('<path d="M4 7h16M4 12h16M4 17h16"/>')) : null, menus,
       h('div.tools', syncBtn, h('span.net', { id: 'net', role: 'status' }), h('a', { href: '#/dashboard', title: 'Dashboard', 'aria-label': 'Dashboard' }, svg(ICON.dashboard)),
         h('button', { onclick: bell, 'aria-label': 'Notifications', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, svg('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.500 2H4.500L6 16ZM10 20.500h4"/>'), bellCount),

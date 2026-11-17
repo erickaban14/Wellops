@@ -1,5 +1,5 @@
 // Shared helpers: DOM builder, API client, lookups, formatting, dialogs, pickers, theme.
-export const state = { user: null, meta: null, company: 'WellOps ERP', currency: 'USD', mode: '', offline: false, dirty: false };
+export const state = { user: null, meta: null, company: 'ProStars ERP', currency: 'USD', mode: '', offline: false, dirty: false };
 
 export function h(tag, attrs, ...kids) {
   const [t, ...cls] = tag.split('.');

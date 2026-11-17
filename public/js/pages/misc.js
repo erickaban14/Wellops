@@ -45,11 +45,14 @@ function startVpn(url) {
   toast('Signed in by face - VPN client activation requested', 'good');
 }
 
+// The logo is public/icon.svg - replace that one file to rebrand the login page, top bar, favicon and app icon.
+const brand = () => h('div', { style: { textAlign: 'center' } }, h('img.logo.big', { src: '/icon.svg', alt: '' }), h('h1', 'ProStars ERP'), h('div.muted', 'Wells · Rigs · Pumps operations'));
+
 export async function loginPage(root, boot) {
   let pub = { roles: {}, demo_login: false };
-  try { pub = await api('/public'); } catch (e) { if (e.offline) return root.replaceChildren(h('div.login', h('div.card', h('h1', 'WellOps ERP'), h('p.muted', 'No connection, and nobody has signed in on this device yet. Connect once to sign in; after that, Daily Work Tickets work offline.'),
+  try { pub = await api('/public'); } catch (e) { if (e.offline) return root.replaceChildren(h('div.login', h('div.card', brand(), h('p.muted', 'No connection, and nobody has signed in on this device yet. Connect once to sign in; after that, Daily Work Tickets work offline.'),
     h('button.btn.primary', { onclick: () => location.reload() }, 'Try again')))); }
-  if (pub.ready === false) { setTimeout(() => loginPage(root, boot), 8000); return root.replaceChildren(h('div.login', h('div.card', h('h1', 'WellOps ERP'), h('div.banner', { class: pub.error ? 'bad' : '', style: { marginTop: '14px' }, role: 'status' }, pub.error || 'Preparing the database for first use. This page refreshes by itself.')))); }
+  if (pub.ready === false) { setTimeout(() => loginPage(root, boot), 8000); return root.replaceChildren(h('div.login', h('div.card', brand(), h('div.banner', { class: pub.error ? 'bad' : '', style: { marginTop: '14px' }, role: 'status' }, pub.error || 'Preparing the database for first use. This page refreshes by itself.')))); }
   const email = h('input', { type: 'email', autocomplete: 'username', required: true, placeholder: 'name@company.com' }), pw = h('input', { type: 'password', autocomplete: 'current-password', required: true });
   const err = h('div.banner.bad', { hidden: true });
   const attempt = async fn => { err.hidden = true; try { const r = await fn(); await boot(); return r; } catch (e) { err.textContent = e.message; err.hidden = false; } };
@@ -57,7 +60,7 @@ export async function loginPage(root, boot) {
   for (const [k, r] of Object.entries(pub.roles)) (groups[r.group] ||= []).push([k, r.label]);
   const role = h('select', { 'aria-label': 'Demo role' }, Object.entries(groups).map(([g, list]) => h('optgroup', { label: g }, list.map(([k, l]) => h('option', { value: k, selected: k === 'rig_manager' }, l)))));
   root.replaceChildren(h('div.login', h('div.card',
-    h('div.row', h('img', { src: '/icon.svg', width: 40, height: 40, alt: '' }), h('div', h('h1', 'WellOps ERP'), h('div.muted', 'Wells · Rigs · Pumps operations'))),
+    brand(),
     h('form', { noValidate: false, onsubmit: e => { e.preventDefault(); attempt(() => api('/login', { body: { email: email.value, password: pw.value } })); } },
       err, field('Email', email), field('Password', pw), h('button.btn.primary', { type: 'submit' }, 'Sign in'), h('p.muted', { style: { margin: 0, fontSize: '12.5px', textAlign: 'center' } }, 'Forgot your password? Ask your system administrator to reset it.')),
     h('div.or', 'or'),
