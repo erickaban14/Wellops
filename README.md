@@ -83,7 +83,7 @@ run and removes rows deleted upstream. Every run is logged in Sync history.
 
 - **Phones**: primary actions sit in a bar fixed to the bottom of the screen; lists collapse to compact cards; controls are at least 44 px on touch devices.
 - **Work tickets** keep every change on the device as you type, so an interrupted entry can be continued later.
-- **Logo**: `public/icon.svg` is the only logo file. Replacing it updates the login page, the top bar, the browser tab icon and the installed-app icon. The company name in the top bar comes from Settings › Parameters › `company_name`.
+- **Logo**: `public/icon.svg` is the full logo (login page and top bar). `public/favicon.svg` is the square droplet-and-gear mark cropped from it (browser tab and installed-app icon); after replacing the logo, replace or re-crop that file too. The company name in the top bar comes from Settings › Parameters › `company_name`.
 - **Theme**: Auto / Light / Dark in the user menu (top right).
 - **Lists**: click a column header to sort, filter by status chips, page through 50 at a time, Export downloads the filtered rows as CSV.
 - **Forms** warn before discarding unsaved changes and show validation messages next to the field.

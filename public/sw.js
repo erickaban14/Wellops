@@ -1,7 +1,7 @@
 // Service worker: keeps the app shell available without a connection (network first, cache fallback).
 // API calls are never cached here - offline work tickets are queued by the app itself.
-const CACHE = 'wellops-shell-v2';
-const SHELL = ['/', '/css/app.css', '/icon.svg', '/manifest.json', '/js/app.js', '/js/core.js', '/js/views.js', '/js/offline.js', '/js/chart.js',
+const CACHE = 'wellops-shell-v3';
+const SHELL = ['/', '/css/app.css', '/icon.svg', '/favicon.svg', '/manifest.json', '/js/app.js', '/js/core.js', '/js/views.js', '/js/offline.js', '/js/chart.js',
   '/js/pages/dashboard.js', '/js/pages/planning.js', '/js/pages/operations.js', '/js/pages/hr.js', '/js/pages/inventory.js', '/js/pages/misc.js'];
 
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())));
