@@ -1,6 +1,6 @@
-// Service worker: keeps the app shell available without a connection (network first, cache fallback).
+// Service worker: keeps the app shell available without a connection (cache first, network fallback).
 // API calls are never cached here - offline work tickets are queued by the app itself.
-const CACHE = 'wellops-shell-v3';
+const CACHE = 'wellops-shell-v4';
 const SHELL = ['/', '/css/app.css', '/icon.svg', '/favicon.svg', '/manifest.json', '/js/app.js', '/js/core.js', '/js/views.js', '/js/offline.js', '/js/chart.js',
   '/js/pages/dashboard.js', '/js/pages/planning.js', '/js/pages/operations.js', '/js/pages/hr.js', '/js/pages/inventory.js', '/js/pages/misc.js'];
 
@@ -9,8 +9,9 @@ self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Pr
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
-  e.respondWith(fetch(e.request).then(res => {
+  // cache first (saves the host's hit budget); bump CACHE on each release to refresh the shell
+  e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
     return res;
-  }).catch(() => caches.match(e.request).then(hit => hit || caches.match('/'))));
+  }).catch(() => caches.match('/'))));
 });

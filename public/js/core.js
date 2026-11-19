@@ -38,12 +38,16 @@ export async function api(path, opts = {}) {
     res = await fetch(`/api${path}`, { method: opts.method || (opts.body ? 'POST' : 'GET'), headers: opts.body ? { 'Content-Type': 'application/json' } : {}, body: opts.body ? JSON.stringify(opts.body) : undefined });
   } catch { setNet(true); throw Object.assign(new Error('No connection to the server'), { offline: true }); }
   setNet(false);
-  const data = await res.json().catch(() => ({}));
+  const data = await res.json().catch(() => null);
+  if (data === null && res.ok && !sessionStorage.getItem('wo_challenge')) {   // free hosts answer first requests with an HTML challenge page: reload once so the browser passes it
+    sessionStorage.setItem('wo_challenge', '1'); location.reload(); return new Promise(() => {});
+  }
+  if (data !== null) sessionStorage.removeItem('wo_challenge');
   if (!res.ok) {
     if (res.status === 401 && state.user) { state.user = null; state.dirty = false; location.hash = '#/login'; location.reload(); }
-    throw Object.assign(new Error(data.error || res.statusText), { status: res.status });
+    throw Object.assign(new Error(data?.error || res.statusText), { status: res.status });
   }
-  return data;
+  return data ?? {};
 }
 
 // ---- cached table reads + display names ----

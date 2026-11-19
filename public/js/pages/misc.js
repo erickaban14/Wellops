@@ -102,7 +102,7 @@ export async function documentFile(rec, reload) {
   const upload = async () => {
     const file = input.files[0];
     if (!file) throw new Error('Choose a file first');
-    if (file.size > 15e6) throw new Error('File is larger than 15 MB');
+    if (file.size > 5e6) throw new Error('File is larger than 5 MB');   // base64 adds a third; stays under the host's post_max_size
     const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = no; r.readAsDataURL(file); });
     await api(`/documents/${rec.id}/upload`, { body: { file_name: file.name, mime: file.type, data } });
     toast('File stored in the document repository', 'good'); reload();

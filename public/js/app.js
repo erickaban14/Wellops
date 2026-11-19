@@ -245,16 +245,25 @@ async function boot() {
 }
 
 // Live updates: the server tells us which tables changed; refresh caches and the dashboard / project screens.
-let es, refreshTimer;
+// Polls /api/changes (no long-lived connection on shared hosting); paused while the tab is hidden.
+let pollTimer, refreshTimer, since = '';
 function listen() {
-  if (es || state.offline) return;
-  es = new EventSource('/api/events');
-  es.onmessage = ev => {
-    const tables = JSON.parse(ev.data);
-    invalidate(tables);
-    if (tables.includes('notifications')) loadNotes();
-    if (/^#\/(dashboard|operations\/projects\/)/.test(location.hash)) { clearTimeout(refreshTimer); refreshTimer = setTimeout(() => !document.querySelector('.overlay') && render(), 1200); }
+  if (pollTimer || state.offline) return;
+  const tick = async () => {
+    if (document.hidden || state.offline || !state.user) return;
+    try {
+      const r = await api('/changes' + (since ? '?since=' + encodeURIComponent(since) : ''));
+      const first = !since; since = r.now;
+      const tables = r.tables;
+      if (first || !tables.length) return;
+      invalidate(tables);
+      if (tables.includes('notifications')) loadNotes();
+      if (/^#\/(dashboard|operations\/projects\/)/.test(location.hash)) { clearTimeout(refreshTimer); refreshTimer = setTimeout(() => !document.querySelector('.overlay') && render(), 1200); }
+    } catch {}
   };
+  pollTimer = setInterval(tick, 20000);
+  tick();
+  document.addEventListener('visibilitychange', () => !document.hidden && tick());
 }
 // Leaving a form with unsaved changes asks first.
 let lastHash = location.hash, skipNext = false;
