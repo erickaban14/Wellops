@@ -144,7 +144,7 @@ final class Db
         return $out;
     }
 
-    private static function nowSql(): string { return gmdate('Y-m-d H:i:s') . '.' . sprintf('%03d', (int) (microtime(true) * 1000) % 1000); }
+    public static function nowSql(): string { return gmdate('Y-m-d H:i:s') . '.' . sprintf('%03d', (int) (microtime(true) * 1000) % 1000); }
 
     // ---- CRUD ----
     public static function list(string $table, array $where = []): array

@@ -70,5 +70,26 @@ function po_total($lines): float
     return r2(sum(is_array($lines) ? $lines : [], fn($l) => num($l['qty'] ?? 0) * num($l['price'] ?? 0)));
 }
 
+/** Like JavaScript's Number.toLocaleString() (en-US, up to 3 decimals): used in notification texts. */
+function fmt_num($n): string
+{
+    $s = number_format((float) $n, 3, '.', ',');
+    return rtrim(rtrim($s, '0'), '.');
+}
+
+function req_body(): array { return $GLOBALS['BODY'] ?? []; }
+
+/**
+ * Wrap a service call as a route handler: checks app access, runs inside one transaction,
+ * and passes ($params, $body, $user) to $fn.
+ */
+function act(array $apps, callable $fn): callable
+{
+    return function (array $p) use ($apps, $fn) {
+        if ($apps) Auth::need(...$apps);
+        return Db::tx(fn() => $fn($p, req_body(), Auth::$user));
+    };
+}
+
 const JSON_FLAGS = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR;
 function to_json($v): string { return json_encode($v, JSON_FLAGS); }

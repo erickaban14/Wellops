@@ -2,7 +2,7 @@
 // Front controller for every /api/* request (port of server/index.js). Business modules live in app/services/.
 
 require __DIR__ . '/../app/bootstrap.php';
-foreach (glob(APP_DATA . '/../services/*.php') ?: [] as $f) require_once $f;
+foreach (glob(__DIR__ . '/../app/services/*.php') ?: [] as $f) require_once $f;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -21,6 +21,7 @@ $path = preg_replace('#^(?:.*?/)?api/?#', '', $path, 1); // tolerate the API liv
 $raw = file_get_contents('php://input');
 $body = $raw !== '' ? (json_decode($raw, true) ?? []) : [];
 if (!is_array($body)) $body = [];
+$GLOBALS['BODY'] = $body;
 
 // ---------- helpers for the generic data API ----------
 function strip_hidden(array $m, ?array $row): ?array
@@ -186,7 +187,7 @@ $route('DELETE', 'data/{table}/{id}', function ($p) {
 });
 
 // ---------- business modules (added by app/services/*.php) ----------
-if (function_exists('register_service_routes')) register_service_routes($route);
+foreach (get_defined_functions()['user'] as $fn) if (str_starts_with($fn, 'routes_')) $fn($route);
 
 // ---------- dispatch ----------
 try {
