@@ -1,0 +1,29 @@
+# ProStars on Apache (InfinityFree). Lives in htdocs/.
+Options -Indexes
+DirectoryIndex index.html
+
+# Never serve configuration, installer leftovers or internal folders.
+<FilesMatch "^(config(\.sample)?\.php|installed\.lock|.*\.sql)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "same-origin"
+    <Files "sw.js">
+        Header set Cache-Control "no-cache"
+    </Files>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # app/ and uploads/ are closed off by their own .htaccess; block them here too.
+    RewriteRule ^(app|uploads)(/|$) - [F,L]
+    # API
+    RewriteRule ^api(/|$) api/index.php [L]
+    # Single-page app: anything that is not a real file goes to index.html
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.html [L]
+</IfModule>
