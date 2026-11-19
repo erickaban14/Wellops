@@ -1,3 +1,5 @@
 node_modules/
-data/
+/data/
 .env
+php/config.php
+php/app/installed.lock
