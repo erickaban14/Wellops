@@ -15,6 +15,16 @@ $demo = $cli ? in_array('--demo', $argv ?? [], true) : (($_GET['demo'] ?? '1') !
 $lock = __DIR__ . '/app/installed.lock';
 if (is_file($lock)) exit("Already installed (remove app/installed.lock to run again). Delete install.php.\n");
 set_time_limit(300);
+@ini_set('memory_limit', '256M');
+// Shared hosts hide PHP errors behind a bare 500: print them here instead (installer only, key-protected).
+set_exception_handler(function (Throwable $e) {
+    http_response_code(500);
+    echo "\nINSTALL FAILED: " . get_class($e) . ': ' . $e->getMessage() . "\n  at " . basename($e->getFile()) . ':' . $e->getLine() . "\n";
+});
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) echo "\nINSTALL FAILED (fatal): {$e['message']}\n  at " . basename($e['file']) . ":{$e['line']}\n";
+});
 
 // 1. Tables
 $sql = file_get_contents(APP_DATA . '/schema.sql');
