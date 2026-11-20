@@ -14,9 +14,12 @@
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set Referrer-Policy "same-origin"
-    <Files "sw.js">
+    # The host caches static files for 30 days; make browsers revalidate app files so updates show up.
+    # (The service worker still serves assets from its own cache, so this costs few hits.)
+    <FilesMatch "\.(html|js|css|json|webmanifest)$">
         Header set Cache-Control "no-cache"
-    </Files>
+        Header unset Expires
+    </FilesMatch>
 </IfModule>
 
 <IfModule mod_rewrite.c>
