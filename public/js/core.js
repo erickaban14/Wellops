@@ -39,10 +39,14 @@ export async function api(path, opts = {}) {
   } catch { setNet(true); throw Object.assign(new Error('No connection to the server'), { offline: true }); }
   setNet(false);
   const data = await res.json().catch(() => null);
-  if (data === null && res.ok && !sessionStorage.getItem('wo_challenge')) {   // free hosts answer first requests with an HTML challenge page: reload once so the browser passes it
-    sessionStorage.setItem('wo_challenge', '1'); location.reload(); return new Promise(() => {});
+  if (data === null && res.ok) {   // free hosts sometimes answer with an HTML browser-check page: reload so the browser passes it (at most once a minute)
+    let last = 0; try { last = +sessionStorage.getItem('wo_challenge') || 0; } catch {}
+    if (Date.now() - last > 60000) {
+      try { sessionStorage.setItem('wo_challenge', String(Date.now())); } catch {}
+      location.reload(); return new Promise(() => {});
+    }
+    throw Object.assign(new Error('The server is busy (browser check). Reload the page in a moment.'), { status: 503 });
   }
-  if (data !== null) sessionStorage.removeItem('wo_challenge');
   if (!res.ok) {
     if (res.status === 401 && state.user) { state.user = null; state.dirty = false; location.hash = '#/login'; location.reload(); }
     throw Object.assign(new Error(data?.error || res.statusText), { status: res.status });
