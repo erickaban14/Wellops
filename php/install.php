@@ -4,6 +4,22 @@
 //   CLI:  php install.php --demo | php install.php --master
 // Refuses to run twice (app/installed.lock). DELETE THIS FILE after use.
 
+// Shared hosts hide PHP errors behind a bare 500: print them here instead. Registered before bootstrap so load errors show too.
+// (Only when a key was supplied; install.php is deleted after use.)
+@ini_set('display_errors', '0'); @ini_set('memory_limit', '256M'); error_reporting(E_ALL);
+if (PHP_SAPI !== 'cli' && isset($_GET['key'])) {
+    header('Content-Type: text/plain; charset=utf-8');
+    set_exception_handler(function (Throwable $e) {
+        http_response_code(500);
+        echo "\nINSTALL FAILED: " . get_class($e) . ': ' . $e->getMessage() . "\n  at " . basename($e->getFile()) . ':' . $e->getLine() . "\n";
+    });
+    register_shutdown_function(function () {
+        $e = error_get_last();
+        if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) echo "\nINSTALL FAILED (fatal): {$e['message']}\n  at " . basename($e['file']) . ":{$e['line']}\n";
+    });
+}
+echo "Installer started (PHP " . PHP_VERSION . ").\n";
+
 require __DIR__ . '/app/bootstrap.php';
 
 $cli = PHP_SAPI === 'cli';
@@ -15,16 +31,6 @@ $demo = $cli ? in_array('--demo', $argv ?? [], true) : (($_GET['demo'] ?? '1') !
 $lock = __DIR__ . '/app/installed.lock';
 if (is_file($lock)) exit("Already installed (remove app/installed.lock to run again). Delete install.php.\n");
 set_time_limit(300);
-@ini_set('memory_limit', '256M');
-// Shared hosts hide PHP errors behind a bare 500: print them here instead (installer only, key-protected).
-set_exception_handler(function (Throwable $e) {
-    http_response_code(500);
-    echo "\nINSTALL FAILED: " . get_class($e) . ': ' . $e->getMessage() . "\n  at " . basename($e->getFile()) . ':' . $e->getLine() . "\n";
-});
-register_shutdown_function(function () {
-    $e = error_get_last();
-    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) echo "\nINSTALL FAILED (fatal): {$e['message']}\n  at " . basename($e['file']) . ":{$e['line']}\n";
-});
 
 // 1. Tables
 $sql = file_get_contents(APP_DATA . '/schema.sql');
