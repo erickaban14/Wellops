@@ -281,6 +281,8 @@ window.addEventListener('hashchange', () => {
 window.addEventListener('online', () => { if (state.offline) boot(); });
 window.addEventListener('offline', () => { state.offline = true; updateNet(); });
 window.addEventListener('unhandledrejection', e => oops(e.reason || new Error('Unexpected error')));
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+// The service worker is retired (see sw.js); remove any copy a browser still has.
+navigator.serviceWorker?.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+window.__booted = true;
 boot();
 export { render, toast };
