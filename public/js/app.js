@@ -232,7 +232,7 @@ async function run(seq, fn) {
 async function boot() {
   try {
     const me = await api('/me');
-    Object.assign(state, { user: me.user, meta: me.meta, company: me.company, mode: me.mode, sync_configured: me.sync_configured, offline: false });
+    Object.assign(state, { user: me.user, meta: me.meta, company: me.company, currency: me.currency || state.currency, symbol: me.currency_symbol || state.symbol, mode: me.mode, sync_configured: me.sync_configured, offline: false });
     localStorage.setItem('wo_me', JSON.stringify(me));
   } catch (e) {
     const saved = e.offline && JSON.parse(localStorage.getItem('wo_me') || 'null');

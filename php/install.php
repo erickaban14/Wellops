@@ -65,6 +65,11 @@ Db::tx(function () use ($seed, $tables, $demo, $CONFIG) {
     echo sprintf("  %-20s %d rows\n", 'users', count($users));
 });
 
+// 3. The seed is generated in US dollars: convert it to Omani rials.
+require_once __DIR__ . '/app/currency.php';
+convert_to_omr();
+echo "Amounts converted to Omani rials (1 USD = " . USD_TO_OMR . " OMR).\n";
+
 file_put_contents($lock, gmdate('c') . "\n");
 echo "\nDone (" . ($demo ? 'demo scenario' : 'master data only') . "). Sign in as <role>@wellops.test (e.g. admin@wellops.test) with the seed_password from config.php.\n";
 echo "Now DELETE install.php from the server.\n";

@@ -29,6 +29,8 @@ function days_between($a, $b): int
 function overlap($a1, $a2, $b1, $b2): bool { return $a1 <= $b2 && $b1 <= $a2; }
 function num($v): float { return is_numeric($v) ? (float) $v : 0.0; }
 function r2($v): float { return round(num($v) * 100) / 100; }
+/** Money: round to the baisa (Omani rial has 3 decimals). */
+function amt($v): float { return round(num($v), 3); }
 function pad($n, int $w = 4): string { return str_pad((string) $n, $w, '0', STR_PAD_LEFT); }
 
 /** JavaScript truthiness: "0" and "false" are truthy, unlike PHP. */
@@ -67,7 +69,7 @@ function uuid4(): string
 /** Purchase order total (server/services/procurement.js poTotal). */
 function po_total($lines): float
 {
-    return r2(sum(is_array($lines) ? $lines : [], fn($l) => num($l['qty'] ?? 0) * num($l['price'] ?? 0)));
+    return amt(sum(is_array($lines) ? $lines : [], fn($l) => num($l['qty'] ?? 0) * num($l['price'] ?? 0)));
 }
 
 /** Like JavaScript's Number.toLocaleString() (en-US, up to 3 decimals): used in notification texts. */

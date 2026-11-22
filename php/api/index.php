@@ -107,7 +107,7 @@ $route('GET', 'me', function () use ($MODELS_JSON, $rolesMeta) {
     $setting = fn($k, $d) => Db::list('settings', ['key' => $k])[0]['value'] ?? $d;
     $GLOBALS['RAW_JSON'] = true;
     return '{"user":' . to_json(Auth::publicUser($u)) . ',"meta":{"models":' . $MODELS_JSON . ',"roles":' . to_json($rolesMeta) . '},"mode":"mysql",'
-        . '"sync_configured":false,"company":' . to_json($setting('company_name', 'ProStars ERP')) . ',"currency":' . to_json($setting('currency', 'USD')) . '}';
+        . '"sync_configured":false,"company":' . to_json($setting('company_name', 'ProStars ERP')) . ',"currency":' . to_json($setting('currency', 'OMR')) . ',"currency_symbol":' . to_json($setting('currency_symbol', "⃄")) . '}';
 });
 $route('POST', 'face/enroll', function () use ($body) {
     $d = $body['descriptor'] ?? null;

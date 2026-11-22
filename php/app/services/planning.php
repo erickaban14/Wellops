@@ -234,9 +234,9 @@ function plan_run_mrp(array $user): array
 
         $so = $SO[$line['so_id'] ?? ''] ?? null;
         $well = $W[$line['well_id'] ?? ''] ?? null;
-        $cost = ['labor' => r2(array_sum(array_map(fn($c) => $c['hourly_rate'] * 12 * $days, $crew))),
-            'material' => r2(array_sum(array_map(fn($m) => $m['required'] * $m['unit_cost'], $materials))),
-            'equipment' => r2(($machine['day_rate'] ?? 0) * $days)];
+        $cost = ['labor' => amt(array_sum(array_map(fn($c) => $c['hourly_rate'] * 12 * $days, $crew))),
+            'material' => amt(array_sum(array_map(fn($m) => $m['required'] * $m['unit_cost'], $materials))),
+            'equipment' => amt(($machine['day_rate'] ?? 0) * $days)];
         $alts = [];
         foreach (array_slice(array_values(array_filter($sel['ranked'], fn($r) => $r['eligible'])), 0, 4) as $r)
             $alts[] = ['code' => $r['machine']['code'] ?? null, 'name' => $r['machine']['name'] ?? null, 'score' => $r['score'], 'available' => $r['available'], 'conflicts' => $r['conflicts']];
@@ -248,7 +248,7 @@ function plan_run_mrp(array $user): array
             'operation' => $line['operation'], 'api_code' => $line['api_code'] ?? null, 'depth_ft' => $depth, 'flow_gpm' => num($line['flow_gpm'] ?? 0),
             'start_date' => $line['start_date'], 'end_date' => $end_date, 'total_hours' => $total_hours, 'duration' => intdiv($total_hours, 24) . 'd ' . ($total_hours % 24) . 'h',
             'machine' => $machine, 'machine_alternatives' => $alts, 'activities' => $activities, 'materials' => $materials, 'crew' => $crew, 'cost' => $cost,
-            'budget' => r2($cost['labor'] + $cost['material'] + $cost['equipment']), 'kpis' => $kpis, 'exceptions' => $exceptions];
+            'budget' => amt($cost['labor'] + $cost['material'] + $cost['equipment']), 'kpis' => $kpis, 'exceptions' => $exceptions];
         $plan['training'] = hr_training_needs($plan);
         $plans[] = $plan;
     }

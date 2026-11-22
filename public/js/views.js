@@ -77,7 +77,7 @@ export function lineEditor(cols, lines, lookups, disabled) {
   const data = (lines || []).map(l => ({ ...l }));
   const tbody = h('tbody'), total = h('td.num');
   const hasTotal = cols.some(c => c[0] === 'qty') && cols.some(c => c[0] === 'price');
-  const sum = () => { if (hasTotal) total.textContent = fmtNum(data.reduce((a, l) => a + (Number(l.qty) || 0) * (Number(l.price) || 0), 0)); };
+  const sum = () => { if (hasTotal) total.textContent = fmtNum(data.reduce((a, l) => a + (Number(l.qty) || 0) * (Number(l.price) || 0), 0), 3); };
   const label = c => c[2]?.label || c[0].replace(/_id$/, '').replace(/_/g, ' ').replace(/\b\w/g, x => x.toUpperCase());
   const input = (l, c) => {
     const [name, type = 'text', o = {}] = c, aria = label(c);

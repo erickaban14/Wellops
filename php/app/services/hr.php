@@ -185,19 +185,19 @@ function hr_run_payroll(array $b): array
         $regular_hours = sum($rows, 'regular_hours');
         $ot_hours = sum($rows, 'ot_hours');
         $days_worked = count(array_unique(array_column($rows, 'work_date')));
-        $basic_pay = r2($regular_hours * $rate);
-        $ot_pay = r2($ot_hours * $rate * $otMult);
-        $leave_pay = r2($leave_days * $dayHours * $rate);
-        $allowances = r2($days_worked * num($e['daily_allowance'] ?? 0));
-        $gross_pay = r2($basic_pay + $ot_pay + $leave_pay + $allowances);
-        $deductions = r2($gross_pay * ($taxPct + $contribPct) / 100);
+        $basic_pay = amt($regular_hours * $rate);
+        $ot_pay = amt($ot_hours * $rate * $otMult);
+        $leave_pay = amt($leave_days * $dayHours * $rate);
+        $allowances = amt($days_worked * num($e['daily_allowance'] ?? 0));
+        $gross_pay = amt($basic_pay + $ot_pay + $leave_pay + $allowances);
+        $deductions = amt($gross_pay * ($taxPct + $contribPct) / 100);
         $slips[] = ['employee_id' => $e['id'], 'days_worked' => $days_worked, 'regular_hours' => $regular_hours, 'ot_hours' => $ot_hours, 'leave_days' => $leave_days,
             'basic_pay' => $basic_pay, 'ot_pay' => $ot_pay, 'leave_pay' => $leave_pay, 'allowances' => $allowances, 'gross_pay' => $gross_pay,
-            'deductions' => $deductions, 'net_pay' => r2($gross_pay - $deductions)];
+            'deductions' => $deductions, 'net_pay' => amt($gross_pay - $deductions)];
     }
     if (!$slips) fail(400, 'No consolidated timesheets or paid leaves in this period. Consolidate timesheets first.');
     $run = Db::insert('payroll_runs', ['name' => "Payroll $ps to $pe", 'period_start' => $ps, 'period_end' => $pe, 'status' => 'draft',
-        'total_gross' => r2(sum($slips, 'gross_pay')), 'total_net' => r2(sum($slips, 'net_pay'))]);
+        'total_gross' => amt(sum($slips, 'gross_pay')), 'total_net' => amt(sum($slips, 'net_pay'))]);
     Db::insertMany('payslips', array_map(fn($s) => $s + ['run_id' => $run['id']], $slips));
     return $run;
 }
@@ -212,7 +212,7 @@ function hr_approve_payroll(string $id): array
         Db::q("UPDATE `timesheets` SET status = 'paid', updated_at = ? WHERE status = 'consolidated' AND work_date BETWEEN ? AND ? AND employee_id IN ($in)",
             array_merge([Db::nowSql(), $run['period_start'], $run['period_end']], $emp));
     }
-    journal($run['period_end'], $run['name'], 'Payroll', [['6100', $run['total_gross'], 0], ['2100', 0, $run['total_net']], ['2200', 0, r2($run['total_gross'] - $run['total_net'])]]);
+    journal($run['period_end'], $run['name'], 'Payroll', [['6100', $run['total_gross'], 0], ['2100', 0, $run['total_net']], ['2200', 0, amt($run['total_gross'] - $run['total_net'])]]);
     return Db::update('payroll_runs', $id, ['status' => 'approved']);
 }
 

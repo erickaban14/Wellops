@@ -5,8 +5,8 @@
 function dash_build(array $user): array
 {
     global $ROLES;
-    $cur = (string) setting('currency', 'USD');
-    $money = fn($v) => $cur . ' ' . number_format(round(num($v)), 0, '.', ',');
+    $cur = (string) setting('currency_symbol', "⃄");
+    $money = fn($v) => $cur . "\u{00A0}" . number_format(num($v), 3, '.', ',');
     $kpi = fn($title, $value, $link, $tone = '', $sub = '') => ['type' => 'kpi', 'title' => $title, 'value' => $value, 'link' => $link, 'tone' => $tone, 'sub' => $sub];
     $list = fn($title, $columns, $rows, $link, $wide = false) => ['type' => 'list', 'title' => $title, 'columns' => $columns, 'rows' => array_slice(array_values($rows), 0, 8), 'link' => $link] + ($wide ? ['wide' => true] : []);
     $live = fn($s) => !in_array($s, ['completed', 'done', 'cancelled'], true);

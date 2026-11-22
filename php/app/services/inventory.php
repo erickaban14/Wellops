@@ -83,7 +83,7 @@ function inv_issue(array $b, array $user): array
     $ref = Db::nextNo('stock_moves', 'ref', 'ISS-');
     inv_bump($it, -$q);
     if ($project_id) {
-        $cost = r2($q * num($it['unit_cost'] ?? 0));
+        $cost = amt($q * num($it['unit_cost'] ?? 0));
         Db::insert('project_costs', ['project_id' => $project_id, 'cost_date' => today(), 'category' => 'material', 'amount' => $cost,
             'description' => "Issued $q " . ($it['uom'] ?? '') . ' ' . $it['name'], 'ref' => $ref]);
         journal(today(), $ref, 'Material issue', [['5000', $cost, 0], ['1300', 0, $cost]], $project_id);
@@ -111,7 +111,7 @@ function inv_return(array $b, array $user): array
     }
     inv_bump($it, $q);
     if ($project_id) {
-        $cost = r2($q * $uc);
+        $cost = amt($q * $uc);
         Db::insert('project_costs', ['project_id' => $project_id, 'cost_date' => today(), 'category' => 'material', 'amount' => -$cost,
             'description' => "Returned $q " . ($it['uom'] ?? '') . ' ' . $it['name'], 'ref' => $ref]);
         journal(today(), $ref, 'Material return', [['1300', $cost, 0], ['5000', 0, $cost]], $project_id);
@@ -193,7 +193,7 @@ function fin_trial_balance(): array
     return array_map(function ($a) use ($tot) {
         $d = num($tot[$a['id']]['d'] ?? 0);
         $c = num($tot[$a['id']]['c'] ?? 0);
-        return ['code' => $a['code'], 'name' => $a['name'], 'type' => $a['type'] ?? null, 'debit' => r2(max(0, $d - $c)), 'credit' => r2(max(0, $c - $d))];
+        return ['code' => $a['code'], 'name' => $a['name'], 'type' => $a['type'] ?? null, 'debit' => amt(max(0, $d - $c)), 'credit' => amt(max(0, $c - $d))];
     }, $accounts);
 }
 

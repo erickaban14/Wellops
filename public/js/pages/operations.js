@@ -30,7 +30,7 @@ export async function projectPage(root, id, base) {
     o.trend.length > 1 ? h('div.widgets',
       card('Progress over time', h('span.muted', '% complete'), h('div.body', lineChart({ title: 'Planned versus actual progress by day', labels: days, max: 100, fmt: v => `${Math.round(v)}%`,
         series: [{ name: 'Planned', color: '--s1', values: o.trend.map(t => t.planned) }, { name: 'Actual', color: '--s2', values: o.trend.map(t => t.actual) }] }))),
-      card('Cost over time', h('span.muted', state.currency), h('div.body', lineChart({ title: 'Planned spend versus actual cost by day', labels: days, fmt: v => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v))),
+      card('Cost over time', h('span.muted', state.symbol), h('div.body', lineChart({ title: 'Planned spend versus actual cost by day', labels: days, fmt: v => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v))),
         series: [{ name: 'Planned', color: '--s1', values: o.trend.map(t => t.planned_cost) }, { name: 'Actual', color: '--s2', values: o.trend.map(t => t.cost) }] })))) : null,
     card('Activities: planned vs actual', h('div.legend', h('span', h('i', { style: { background: 'var(--s1)' } }), 'Planned'), h('span', h('i', { style: { background: 'var(--s2)' } }), 'Actual progress')), h('div.body', h('div.gantt', o.activities.map(a => {
       const left = (new Date(a.planned_start) - t0) / span * 100, w = (new Date(a.planned_end) - new Date(a.planned_start)) / span * 100;
@@ -41,7 +41,7 @@ export async function projectPage(root, id, base) {
     h('div.widgets',
       card('KPIs', null, simpleTable([{ label: 'KPI', key: 'name' }, { label: 'Target', get: k => `${k.direction} ${k.target} ${k.unit || ''}` }, { label: 'Actual', get: k => (k.actual == null || k.actual === '' ? '–' : `${fmtNum(k.actual)} ${k.unit || ''}`), num: 1 },
         { label: 'Result', get: k => (k.ok == null ? badge('No data') : k.ok ? badge('On target', 'good') : badge('Off target', 'bad')) }], o.kpis, { empty: 'No KPIs defined' })),
-      card('Accumulated cost by category', h('a.btn.small', { href: '#/operations/project_costs' }, 'All entries'), simpleTable([{ label: 'Category', get: r => r[0][0].toUpperCase() + r[0].slice(1) }, { label: `Amount (${state.currency})`, get: r => fmtNum(r[1]), num: 1 }],
+      card('Accumulated cost by category', h('a.btn.small', { href: '#/operations/project_costs' }, 'All entries'), simpleTable([{ label: 'Category', get: r => r[0][0].toUpperCase() + r[0].slice(1) }, { label: `Amount (${state.symbol})`, get: r => fmtNum(r[1], 3), num: 1 }],
         [...Object.entries(o.cost_by_category), ['Total', o.cost], ['Budget', o.budget]])),
       card('Field manning', null, simpleTable([{ label: 'Position', key: 'position' }, { label: 'Employee', get: m => emp[m.employee_id] || badge('Shortage', 'bad') }], o.manning)),
       card('Materials: required vs issued', null, simpleTable([{ label: 'Item', get: m => item[m.item_id] }, { label: 'Required', get: m => fmtNum(m.qty_required), num: 1 }, { label: 'Issued', get: m => fmtNum(m.qty_issued), num: 1 }], o.materials)))),

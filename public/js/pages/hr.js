@@ -73,6 +73,6 @@ export async function payrollPage(root, id, base) {
   root.replaceChildren(...page([h('a', { href: base }, 'Payroll'), h('span.sep', '/'), run.name], [badge(run.status),
     run.status === 'draft' && can('hr', 'finance') ? h('button.btn.primary', { onclick: () => confirmBox('Approving marks the timesheets as paid and posts the payroll journal entry.', 'Approve payroll', async () => { await api(`/hr/payroll/${id}/approve`, { body: {} }); invalidate(); toast('Payroll approved and posted', 'good'); payrollPage(root, id, base); }) }, 'Approve & post') : null,
     run.status === 'draft' && can('hr') ? h('button.btn.danger', { onclick: () => confirmBox('Delete this draft payroll run?', 'Delete', async () => { await api(`/data/payroll_runs/${id}`, { method: 'DELETE' }); invalidate(); location.hash = base; }) }, 'Delete') : null],
-  card(`${slips.length} payslips · gross ${fmtMoney(run.total_gross, 2)} · net ${fmtMoney(run.total_net, 2)}`, null, simpleTable([{ label: 'Employee', get: s => emp[s.employee_id] }, n('days_worked'), n('regular_hours'), n('ot_hours'), n('leave_days'),
+  card(`${slips.length} payslips · gross ${fmtMoney(run.total_gross)} · net ${fmtMoney(run.total_net)}`, null, simpleTable([{ label: 'Employee', get: s => emp[s.employee_id] }, n('days_worked'), n('regular_hours'), n('ot_hours'), n('leave_days'),
     n('basic_pay'), n('ot_pay'), n('leave_pay'), n('allowances'), n('gross_pay'), n('deductions'), n('net_pay')], slips))));
 }

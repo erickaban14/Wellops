@@ -17,7 +17,7 @@ function journal($date, $ref, $memo, array $lines, $project_id = null): void
     foreach ($lines as [$c, $debit, $credit]) {
         if (!num($debit) && !num($credit)) continue;
         $rows[] = ['entry_date' => $date, 'ref' => $ref, 'memo' => $memo, 'account_id' => $code[(string) $c] ?? null,
-            'debit' => r2($debit), 'credit' => r2($credit), 'project_id' => $project_id];
+            'debit' => amt($debit), 'credit' => amt($credit), 'project_id' => $project_id];
     }
     foreach ($rows as $r) if (!$r['account_id']) return; // unknown account code: skip posting, like the Node version
     if ($rows) Db::insertMany('journal_entries', $rows);

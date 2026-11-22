@@ -1,5 +1,5 @@
 // Shared helpers: DOM builder, API client, lookups, formatting, dialogs, pickers, theme.
-export const state = { user: null, meta: null, company: 'ProStars ERP', currency: 'USD', mode: '', offline: false, dirty: false };
+export const state = { user: null, meta: null, company: 'ProStars ERP', currency: 'OMR', symbol: '⃄', mode: '', offline: false, dirty: false };
 
 export function h(tag, attrs, ...kids) {
   const [t, ...cls] = tag.split('.');
@@ -70,7 +70,9 @@ export const can = (...mods) => state.user?.role === 'admin' || mods.some(m => s
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const cap = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
 export const fmtNum = (v, d = 2) => (v == null || v === '' ? '' : Number(v).toLocaleString('en-US', { maximumFractionDigits: d }));
-export const fmtMoney = (v, d = 0) => (v == null || v === '' ? '' : `${state.currency} ${fmtNum(v, d)}`);
+// Omani rial: 3 decimals (baisa), official sign U+20C4 before the amount (both come from Settings).
+export const MONEY_DP = 3;
+export const fmtMoney = (v, d = MONEY_DP) => (v == null || v === '' ? '' : `${state.symbol} ${Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })}`);
 // One unambiguous date format everywhere: 16 Nov 2026. Date-times are shown in site time (stored as UTC wall-clock).
 export const fmtDate = v => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || '')); return m ? `${+m[3]} ${MONTHS[+m[2] - 1]} ${m[1]}` : ''; };
 export const fmtDT = v => { if (!v) return ''; const s = new Date(v).toISOString(); return `${fmtDate(s).replace(/ \d{4}$/, '')}, ${s.slice(11, 16)}`; };
@@ -85,7 +87,7 @@ export const badge = (v, t) => (v == null || v === '' ? '' : h('span.badge', { c
 export function fmtField(f, v, lookups = {}) {
   if (v == null || v === '') return '';
   if (f.type === 'ref') return lookups[f.ref]?.[v] || '';
-  if (f.type === 'number') return fmtNum(v);
+  if (f.type === 'number') return f.money ? fmtNum(v, MONEY_DP) : fmtNum(v);
   if (f.type === 'date') return fmtDate(v);
   if (f.type === 'datetime') return fmtDT(v);
   if (f.type === 'bool') return v ? 'Yes' : '';
@@ -94,7 +96,7 @@ export function fmtField(f, v, lookups = {}) {
   if (f.type === 'select') return cap(v);
   return String(v);
 }
-export const fieldLabel = f => f.label + (f.money ? ` (${state.currency})` : '');
+export const fieldLabel = f => f.label + (f.money ? ` (${state.symbol})` : '');
 
 // ---- feedback ----
 export function toast(msg, kind = '') {

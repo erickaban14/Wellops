@@ -69,7 +69,7 @@ function ops_post_ticket(array $t): void
     }
     Db::insertMany('timesheets', $sheets);
     $costs = [];
-    if ($labor) $costs[] = ['category' => 'labor', 'amount' => r2($labor), 'description' => "Crew labour $ref"];
+    if ($labor) $costs[] = ['category' => 'labor', 'amount' => amt($labor), 'description' => "Crew labour $ref"];
 
     // Material issues
     $matCost = 0.0;
@@ -83,7 +83,7 @@ function ops_post_ticket(array $t): void
     }
     foreach ($I as $id => $it) if (($it['on_hand'] ?? null) !== $before[$id]) Db::update('items', $id, ['on_hand' => $it['on_hand']]);
     if ($matCost) {
-        $costs[] = ['category' => 'material', 'amount' => r2($matCost), 'description' => "Materials consumed $ref"];
+        $costs[] = ['category' => 'material', 'amount' => amt($matCost), 'description' => "Materials consumed $ref"];
         journal($t['work_date'], $ref, 'Materials consumed', [['5000', $matCost, 0], ['1300', 0, $matCost]], $t['project_id']);
     }
 
@@ -198,7 +198,7 @@ function ops_overview(string $project_id, ?callable $pre = null): array
     foreach ($posted as $t) foreach ($t['lines'] ?? [] as $l) $lines[] = $l;
     $hours = sum($lines, 'hours');
     $npt = sum(array_filter($lines, fn($l) => !empty($l['npt'])), 'hours');
-    $cost = r2(sum($costs, 'amount'));
+    $cost = amt(sum($costs, 'amount'));
     $budget = num($project['budget'] ?? 0);
     $earned = $budget * $actual_pct / 100;
     $footage = sum($lines, fn($l) => max(0, num($l['depth_to'] ?? 0) - num($l['depth_from'] ?? 0)));
@@ -253,11 +253,11 @@ function ops_overview(string $project_id, ?callable $pre = null): array
                 return $ph * min(100, $p) / 100;
             }) / $totalH * 100);
             $trend[] = ['date' => $d, 'planned' => $plannedD, 'actual' => $actualD,
-                'cost' => r2(sum(array_filter($costs, fn($c) => ($c['cost_date'] ?? '9999') <= $d), 'amount')), 'planned_cost' => (int) round($budget * $plannedD / 100)];
+                'cost' => amt(sum(array_filter($costs, fn($c) => ($c['cost_date'] ?? '9999') <= $d), 'amount')), 'planned_cost' => (int) round($budget * $plannedD / 100)];
         }
     }
     $byCat = [];
-    foreach (group_by($costs, 'category') as $k => $v) $byCat[$k] = r2(sum($v, 'amount'));
+    foreach (group_by($costs, 'category') as $k => $v) $byCat[$k] = amt(sum($v, 'amount'));
     return ['project' => $project, 'activities' => $activities, 'materials' => $materials, 'manning' => $manning, 'kpis' => $kpiRows, 'tickets' => count($posted),
         'planned_pct' => $planned_pct, 'actual_pct' => $actual_pct, 'deviation' => $actual_pct - $planned_pct, 'cost' => $cost, 'budget' => $budget,
         'cost_by_category' => $byCat ?: new stdClass(), 'hours' => $hours, 'npt' => $npt, 'exceptions' => $ex, 'trend' => $trend];
