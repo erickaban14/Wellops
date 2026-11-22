@@ -1,6 +1,6 @@
 # ProStars on Apache (InfinityFree). Lives in htdocs/.
 # Never serve configuration, installer leftovers or internal folders.
-<FilesMatch "^(config(\.sample)?\.php|installed\.lock|.*\.sql)$">
+<FilesMatch "^(config(\.sample)?\.php|installed\.lock|.*\.sql|\.ftp-deploy-sync-state\.json)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
