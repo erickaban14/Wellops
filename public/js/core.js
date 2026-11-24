@@ -30,6 +30,20 @@ export function applyTheme(pref) {
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme());
 applyTheme();
 
+// ---- Omani rial sign ----
+// U+20C4 is new (Unicode 18, 2026): many phones have no font for it and draw an empty box.
+// Detect that once and show the Arabic abbreviation ر.ع. instead (isolated so it stays in place next to the number).
+const OMR_SIGN = '⃄', OMR_FALLBACK = '⁨ر.ع.⁩';
+const signMissing = (() => {
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 32;
+    const x = c.getContext('2d'), draw = ch => { x.clearRect(0, 0, 32, 32); x.font = '24px sans-serif'; x.fillText(ch, 4, 26); return x.getImageData(0, 0, 32, 32).data.join(); };
+    return draw(OMR_SIGN) === draw('͸');   // same pixels as an unassigned code point = no glyph
+  } catch { return false; }
+})();
+const omrReviver = signMissing ? (k, v) => (typeof v === 'string' && v.includes(OMR_SIGN) ? v.replaceAll(OMR_SIGN, OMR_FALLBACK) : v) : undefined;
+if (signMissing) state.symbol = OMR_FALLBACK;
+
 // ---- API ----
 const setNet = off => { if (state.offline !== off) { state.offline = off; state.onNet?.(); } };
 export async function api(path, opts = {}) {
@@ -38,7 +52,7 @@ export async function api(path, opts = {}) {
     res = await fetch(`/api${path}`, { method: opts.method || (opts.body ? 'POST' : 'GET'), headers: opts.body ? { 'Content-Type': 'application/json' } : {}, body: opts.body ? JSON.stringify(opts.body) : undefined });
   } catch { setNet(true); throw Object.assign(new Error('No connection to the server'), { offline: true }); }
   setNet(false);
-  const data = await res.json().catch(() => null);
+  const data = await res.text().then(t => JSON.parse(t, omrReviver)).catch(() => null);
   if (data === null && res.ok) {   // free hosts sometimes answer with an HTML browser-check page: reload so the browser passes it (at most once a minute)
     let last = 0; try { last = +sessionStorage.getItem('wo_challenge') || 0; } catch {}
     if (Date.now() - last > 60000) {
