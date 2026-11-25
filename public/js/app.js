@@ -7,6 +7,7 @@ import * as operations from './pages/operations.js';
 import * as hr from './pages/hr.js';
 import * as inventory from './pages/inventory.js';
 import * as misc from './pages/misc.js';
+import { salesOrderSide } from './pages/sales.js';
 import { flushQueue, initOffline, queued } from './offline.js';
 
 const post = (path, body = {}) => api(path, { body });
@@ -31,7 +32,7 @@ const ICON = {
 const APPS = [
   { key: 'sales', label: 'Sales', color: '#c9603c', menus: [
     { key: 'sales_orders', label: 'Orders', table: 'sales_orders', cols: ['so_no', 'customer_id', 'well_id', 'operation', 'requested_start', 'amount', 'status'],
-      defaults: () => ({ status: 'quotation' }), actions: [
+      defaults: () => ({ status: 'quotation' }), side: salesOrderSide, actions: [
         { label: 'Confirm order', primary: true, confirm: 'Confirming releases this order to Planning.', show: r => r.status === 'quotation', run: r => put('sales_orders', r.id, { status: 'confirmed' }).then(() => 'Order confirmed. It is now available to Planning.') },
         { label: 'Create invoice', show: r => ['planned', 'in progress', 'done'].includes(r.status) && can('finance'), run: r => post('/data/invoices', { customer_id: r.customer_id, so_id: r.id, amount: r.amount, status: 'draft' }).then(() => 'Draft invoice created in Finance') }] },
     { key: 'customers', label: 'Customers', table: 'customers' },
@@ -78,11 +79,11 @@ const APPS = [
         { label: 'Approve', primary: true, show: r => r.status === 'pending approval' && [r.current_approver, 'admin'].includes(state.user.role), reason: 'optional', confirm: r => `Approve ${r.po_no}?`, run: (r, note) => post(`/procurement/po/${r.id}/decide`, { approve: true, note }).then(() => 'Approved') },
         { label: 'Reject', danger: true, show: r => r.status === 'pending approval' && [r.current_approver, 'admin'].includes(state.user.role), reason: 'required', confirm: r => `Reject ${r.po_no}? The buyer will see your reason.`, run: (r, note) => post(`/procurement/po/${r.id}/decide`, { approve: false, note }).then(() => 'Rejected') }] },
     { key: 'suppliers', label: 'Suppliers', table: 'suppliers' },
-    { key: 'items', label: 'Item Master', table: 'items', cols: ['code', 'name', 'category', 'uom', 'unit_cost', 'lead_time_days', 'reorder_level', 'reorder_qty'] },
+    { key: 'items', label: 'Item Master', table: 'items', cols: ['code', 'name', 'category', 'uom', 'unit_cost', 'lead_time_days', 'reorder_level', 'reorder_qty'], side: inventory.itemSide, figures: inventory.itemFigures, tabs: [{ title: 'History', render: inventory.itemHistory }] },
     { key: 'approval_rules', group: 'Configuration', label: 'Approval Rules', table: 'approval_rules', sort: (a, b) => a.seq - b.seq, intro: 'A PO needs approval from every role whose threshold its total reaches, in sequence.' }] },
 
   { key: 'inventory', label: 'Inventory', color: '#2f8f6b', menus: [
-    { key: 'items', label: 'Stock', table: 'items', cols: ['code', 'name', 'category', 'location', 'on_hand', 'uom', 'reorder_level', 'safety_stock'] },
+    { key: 'items', label: 'Stock', table: 'items', cols: ['code', 'name', 'category', 'location', 'on_hand', 'uom', 'reorder_level', 'safety_stock'], side: inventory.itemSide, figures: inventory.itemFigures, tabs: [{ title: 'History', render: inventory.itemHistory }] },
     { key: 'receive', label: 'Receive', page: inventory.receivePage },
     { key: 'qa', label: 'QA', page: inventory.qaPage },
     { key: 'issue', label: 'Issue / Return / Adjust', page: inventory.transactionsPage },
@@ -133,6 +134,8 @@ const APPS = [
     { key: 'sync', label: 'Data Sync', page: misc.syncPage }] },
 ];
 const myApps = () => APPS.filter(a => can(a.key));
+// Where a record of a table opens (used by the value-help arrow): the first generic menu this user can see.
+state.hrefFor = table => { for (const a of myApps()) for (const mm of a.menus) if (mm.table === table && !mm.page) return `#/${a.key}/${mm.key}`; return null; };
 export const canOpen = link => !!link && can(link.split('/')[0]);
 
 // ---------- Shell ----------

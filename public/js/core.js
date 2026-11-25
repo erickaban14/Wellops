@@ -198,6 +198,97 @@ export function picker(options, value, attrs = {}) {
   return wrap;
 }
 
+// SAP-style value help for a link field: type for suggestions (↑ ↓ Enter), F4 or the list button opens a searchable
+// table, the arrow opens the linked record. opts.filter(r) narrows the choices (e.g. wells of the chosen customer).
+export function valueHelp(table, value, { disabled, filter, onpick, label } = {}) {
+  const m = model(table);
+  const extra = Object.entries(m.fields).filter(([k, f]) => !f.hidden && k !== m.display && !['json', 'longtext', 'bool', 'datetime'].includes(f.type)).slice(0, 3);
+  let all = [], lk = {}, cur = value || '', hits = [], active = -1;
+  const load = (async () => {
+    all = await rows(table);
+    await Promise.all([...new Set(extra.map(([, f]) => f.ref).filter(Boolean))].map(async t => { lk[t] = await names(t); }));
+  })();
+  const byId = id => all.find(r => r.id === id);
+  const labelOf = id => recLabel(table, byId(id));
+  const sub = r => extra.map(([k, f]) => plainText(fmtField(f, r[k], lk))).filter(Boolean).join(' · ');
+  const choices = () => all.filter(r => !filter || filter(r));
+  const match = (r, q) => !q || `${recLabel(table, r)} ${sub(r)}`.toLowerCase().includes(q);
+  const input = h('input', { type: 'text', autocomplete: 'off', disabled, role: 'combobox', 'aria-autocomplete': 'list', 'aria-expanded': 'false', 'aria-label': label, placeholder: disabled ? '' : 'Type to search, F4 for list' });
+  const list = h('ul.vh-list', { role: 'listbox', hidden: true });
+  const link = h('a.vh-link', { title: `Open this ${m.label.replace(/s$/, '').toLowerCase()}`, 'aria-label': 'Open linked record', hidden: true }, '➜');
+  const btn = h('button.vh-btn', { type: 'button', title: `Choose from list (F4)`, 'aria-label': `Choose ${label || m.label} from list`, disabled }, '☰');
+  const wrap = h('div.vh', input, btn, link, list);
+  const sync = () => {
+    input.value = cur ? labelOf(cur) : '';
+    const href = cur && state.hrefFor?.(table);
+    link.hidden = !href; if (href) link.href = `${href}/${cur}`;
+  };
+  const pick = r => {
+    cur = r ? r.id : ''; sync(); close();
+    wrap.dispatchEvent(new Event('change', { bubbles: true }));
+    onpick?.(r || null);
+  };
+  const close = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); active = -1; };
+  const show = () => {
+    const q = input.value.trim().toLowerCase();
+    hits = choices().filter(r => match(r, q === labelOf(cur).toLowerCase() ? '' : q)).slice(0, 8);
+    list.replaceChildren(...(hits.length ? hits.map((r, i) => h('li', { role: 'option', class: i === active ? 'on' : '', 'aria-selected': String(r.id === cur),
+      onmousedown: e => { e.preventDefault(); pick(r); } }, h('strong', recLabel(table, r)), h('small', sub(r)))) : [h('li.none', 'No match. Press F4 to browse all.')]));
+    list.hidden = false; input.setAttribute('aria-expanded', 'true');
+  };
+  const dialog = async () => {
+    await load;
+    const q = h('input.search', { type: 'search', placeholder: `Search ${m.label.toLowerCase()}…`, 'aria-label': `Search ${m.label}` });
+    const body = h('div.vh-table');
+    let close2;
+    const draw = () => {
+      const s = q.value.trim().toLowerCase(), data = choices().filter(r => match(r, s));
+      body.replaceChildren(simpleTable([{ label: m.fields[m.display]?.label || 'Name', get: r => recLabel(table, r) }, ...extra.map(([k, f]) => ({ label: f.label, get: r => fmtField(f, r[k], lk), num: f.type === 'number' }))],
+        data, { onRow: r => { close2(); pick(r); }, empty: 'Nothing matches your search.' }));
+    };
+    q.addEventListener('input', draw);
+    q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); body.querySelector('tr.click')?.click(); } });
+    draw();
+    close2 = modal(`Choose ${m.label.replace(/s$/, '')}${choices().length < all.length ? ' (filtered by this form)' : ''}`, h('div', q, body), cur ? [{ label: 'Clear selection', run: () => pick(null) }] : []);
+  };
+  input.addEventListener('focus', async () => { await load; input.select(); });
+  input.addEventListener('input', async () => { await load; active = -1; show(); });
+  input.addEventListener('keydown', async e => {
+    if (e.key === 'F4' || (e.key === 'ArrowDown' && e.altKey)) { e.preventDefault(); close(); return dialog(); }
+    if (list.hidden && e.key === 'ArrowDown') { await load; show(); return; }
+    if (list.hidden) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(0, Math.min(hits.length - 1, active + (e.key === 'ArrowDown' ? 1 : -1))); show(); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (hits[Math.max(active, 0)]) pick(hits[Math.max(active, 0)]); }
+    else if (e.key === 'Escape') { e.stopPropagation(); close(); sync(); }
+  });
+  input.addEventListener('blur', () => setTimeout(() => {
+    if (!list.hidden) close();
+    if (!input.value.trim() && cur) pick(null); else sync();    // unknown text falls back to the current choice
+  }, 120));
+  btn.addEventListener('click', dialog);
+  Object.defineProperty(wrap, 'value', { get: () => cur, set: v => { cur = v || ''; load.then(sync); } });
+  wrap.record = () => byId(cur) || null;
+  wrap.ready = load;
+  load.then(sync);
+  return wrap;
+}
+const plainText = v => (v instanceof Node ? v.textContent : String(v ?? ''));
+
+// Choice between a few options as one-tap buttons (radio group) instead of a dropdown.
+export function segmented(options, value, { disabled, label } = {}) {
+  let cur = value ?? '';
+  const opts = options.map(o => (Array.isArray(o) ? o : [o, cap(o)])), vals = opts.map(o => o[0]);
+  const wrap = h('div.segctl', { role: 'radiogroup', 'aria-label': label });
+  const fire = () => wrap.dispatchEvent(new Event('change', { bubbles: true }));
+  const draw = () => wrap.replaceChildren(...opts.map(([o, l]) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(o === cur), class: o === cur ? 'on' : '', disabled,
+    tabIndex: o === cur || (!cur && o === vals[0]) ? 0 : -1,
+    onclick: () => { cur = o; draw(); fire(); },
+    onkeydown: e => { const i = vals.indexOf(cur), d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (d) { e.preventDefault(); cur = vals[(i + d + vals.length) % vals.length]; draw(); wrap.querySelector('.on')?.focus(); fire(); } } }, l)));
+  draw();
+  Object.defineProperty(wrap, 'value', { get: () => cur, set: v => { cur = v ?? ''; draw(); } });
+  return wrap;
+}
+
 // Number input with large - / + buttons for touch and gloved use.
 export function stepper(input, step = 1) {
   const bump = d => { input.value = Math.max(Number(input.min) || 0, (Number(input.value) || 0) + d); input.dispatchEvent(new Event('input', { bubbles: true })); };
